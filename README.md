@@ -20,6 +20,8 @@ DELETED: 生成被标记为deleted的数据
 
 仅支持mysql 8.0
 
+Python3写的
+
 支持如下数据类型
 
 | 类型            | 大小(字节) | 是否支持 |
@@ -47,7 +49,7 @@ wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
 二进制
 
 ```shell
-wget 
+wget  https://github.com/ddcw/ibd2sql/releases/download/v0.1/ibd2sql_v0.1_x86.tar.gz
 ```
 
 
