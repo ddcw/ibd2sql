@@ -1,3 +1,4 @@
+#@ddcw
 #解析innodb数据返回SQL的
 
 import struct
@@ -43,16 +44,27 @@ class record_header(object):
 		return f'deleted:{self.deleted}  min_rec:{self.min_rec}  owned:{self.owned}  heap_no:{self.heap_no}  record_type:{self.record_type}  next_record:{self.next_record}'
 
 def read_col(col,data_offset,var_offset,bdata):
-	if col['isvar']:
+	if col['isvar'] or col['dtype'] == 'char':
 		#print(bdata[var_offset-1:var_offset],len(bdata[var_offset-1:var_offset]),len(bdata),var_offset)
 		colsize = struct.unpack('>B',bdata[var_offset-1:var_offset])[0]
+		#if col['dtype'] == 'varchar':
+		#	print('varchar: ',colsize,bdata[var_offset-2:var_offset+1],col)
 		if colsize > REC_N_FIELDS_ONE_BYTE_MAX:
-			colsize = struct.unpack('>H',bdata[var_offset-2:var_offset])[0]
+		#if colsize > 255:
+			colsize = struct.unpack('<H',bdata[var_offset-2:var_offset])[0] - 2**15
+			#if col['dtype'] == 'varchar':
+			#	print('varchar colsize: ',bdata[var_offset-2:var_offset])
+			#print(bdata[var_offset-2:var_offset])
+			#print('F2: colsize:',colsize)
 			var_offset -= 1 #一字节不够,就两字节
 		var_offset -= 1
+		#print('var 1:',bdata[var_offset-1:var_offset])
 	else:
 		colsize = col['size']
+	#if int.from_bytes(bdata[data_offset:data_offset+1],'little') > 0x7F and col['dtype'] == 'char':
+	#	colsize *= col['charsize']
 	new_data_offset = data_offset + colsize
+	#print('bdata:',len(bdata[data_offset:data_offset+colsize]),bdata[data_offset:data_offset+50])
 	return new_data_offset,var_offset,bdata[data_offset:data_offset+colsize]
 
 def read_row(columns,key,bdata,offset):
@@ -70,17 +82,23 @@ def read_row(columns,key,bdata,offset):
 	if len(key) == 0:
 		data_offset += 6
 	data_offset += 6 + 7 #去掉TRX和UNDO
+	#print('INDEX:',tdata,key)
 	
 	#读普通字段
 	for x in range(len_column):
 		if tdata[x] is not None or null_bitmask&(1<<x): #暂时懒得去判断null_bitmask了...
 			#print(columns[x],null_bitmask,x)
+			#print('SKIP:',x)
 			continue #这个字段是主键 或者为空就跳过
 		col = columns[x]
 		data_offset,var_offset,coldata = read_col(col,data_offset,var_offset,bdata)
 		tdata[x] = coldata
+		#print('read_row:',x,len(coldata))
+		#print('coldata:',len(tdata[x]))
 	#print(tdata)
-	return [ innodb_type.transdata(columns[x]['dtype'],tdata[x]) if tdata[x] is not None else '' for x in range(len_column)] #数据类型转换
+	#for x in range(len_column):
+	#	print('OLD SIZE:',len(tdata[x]),len(tdata))
+	return [ innodb_type.transdata(columns[x]['dtype'],tdata[x],columns[x]['is_unsigned'],columns[x]['extra']) if tdata[x] is not None else '' for x in range(len_column)] #数据类型转换
 		
 
 PAGE_NEW_INFIMUM = 99
@@ -154,7 +172,8 @@ def first_leaf(filename,columns,keylist,root=4,page_size=16384):
 				col = columns[x]
 				if col['isvar']:
 					colsize = struct.unpack('>B',bdata[var_offset-1:var_offset])[0]
-					if colsize > REC_N_FIELDS_ONE_BYTE_MAX:
+					#if colsize > REC_N_FIELDS_ONE_BYTE_MAX:
+					if colsize > 255:
 						colsize = struct.unpack('>B',bdata[var_offset-1:var_offset])[0]
 						var_offset -= 1 
 					var_offset -= 1
