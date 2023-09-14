@@ -26,7 +26,7 @@
 ## 查看DDL
 
 ```shell
-python main.py --ddl /data/mysql_3314/mysqldata/db1/t20230830.ibd
+python3 main.py --ddl /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ```
 
 
@@ -34,7 +34,7 @@ python main.py --ddl /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ## 查看数据(INSERT)
 
 ```shell
-python main.py --sql /data/mysql_3314/mysqldata/db1/t20230830.ibd
+python3 main.py --sql /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ```
 
 
@@ -44,7 +44,7 @@ python main.py --sql /data/mysql_3314/mysqldata/db1/t20230830.ibd
 对于某些数据库,可能需要列名字(比如某些分布式数据库)
 
 ```shell
-python main.py --sql --complete-insert /data/mysql_3314/mysqldata/db1/t20230830.ibd
+python3 main.py --sql --complete-insert /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ```
 
 
@@ -52,7 +52,7 @@ python main.py --sql --complete-insert /data/mysql_3314/mysqldata/db1/t20230830.
 ## 查看数据(LIST)
 
 ```shell
-python main.py --data /data/mysql_3314/mysqldata/db1/t20230830.ibd
+python3 main.py --data /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ```
 
 
@@ -60,7 +60,7 @@ python main.py --data /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ## 查看被标记为deleted的数据
 
 ```shell
-python main.py --delete /data/mysql_3314/mysqldata/db1/t20230830.ibd
+python3 main.py --delete /data/mysql_3314/mysqldata/db1/t20230830.ibd
 ```
 
 
