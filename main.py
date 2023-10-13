@@ -29,7 +29,7 @@ def _argparse():
 	parser.add_argument(dest='FILENAME', help='ibd filename')
 
 	if parser.parse_args().VERSION:
-		print("VERSION: v0.2 for mysql8.0")
+		print("VERSION: v0.1 for mysql8.0")
 		sys.exit(0)
 
 	return parser.parse_args()
@@ -48,11 +48,11 @@ if __name__ == '__main__':
 			print(f"{x}\t{data[x]}")
 		print('')
 
-		idata = b''
 		sdata = b''
 		with open(filename, 'rb') as f:
-			f.seek(2*16384,0)
-			idata = f.read(16384)
+			fsp_bdata = f.read(16384)
+			sdi_page_no = struct.unpack('I',fsp_bdata[10512:10512+4])[0]
+			f.seek(16384*sdi_page_no,0)
 			sdata = f.read(16384)
 
 		#DDL(sdi)
