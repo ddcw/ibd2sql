@@ -18,7 +18,7 @@ class sdi(object):
 		if len(tdata) != PAGE_SIZE:
 			with open(tdata,'rb') as f:
 				fsp_bdata = f.read(PAGE_SIZE)
-				sdi_page_no = struct.unpack('I',fsp_bdata[10512:10512+4])[0]
+				sdi_page_no = struct.unpack('>I',fsp_bdata[10509:10509+4])[0]
 				f.seek(PAGE_SIZE*sdi_page_no,0)
 				bdata = f.read(PAGE_SIZE)
 		self.bdata = bdata

@@ -51,7 +51,7 @@ if __name__ == '__main__':
 		sdata = b''
 		with open(filename, 'rb') as f:
 			fsp_bdata = f.read(16384)
-			sdi_page_no = struct.unpack('I',fsp_bdata[10512:10512+4])[0]
+			sdi_page_no = struct.unpack('>I',fsp_bdata[10509:10509+4])[0]
 			f.seek(16384*sdi_page_no,0)
 			sdata = f.read(16384)
 
