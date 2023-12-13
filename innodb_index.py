@@ -74,7 +74,7 @@ def read_row(columns,key,bdata,offset):
 	null_bitmask = int.from_bytes(bdata[offset-5-null_bitmask_size:offset-5],'big')
 	var_offset = offset - 5 - null_bitmask_size #可变长字段偏移量
 	data_offset = offset
-	var_offset += 1 if len_column == 1 else 0
+	var_offset += 1 if null_bitmask > 0 else 0
 	#读索引数据
 	for x in key:
 		col = columns[x]
@@ -85,13 +85,15 @@ def read_row(columns,key,bdata,offset):
 	data_offset += 6 + 7 #去掉TRX和UNDO
 	#print('INDEX:',tdata,key)
 	
+	bitmaskvar = 0
 	#读普通字段
 	for x in range(len_column):
-		if tdata[x] is not None or null_bitmask&(1<<x): #暂时懒得去判断null_bitmask了...
+		col = columns[x]
+		bitmaskvar += 1 if col['isvar'] else 0
+		if tdata[x] is not None or null_bitmask&(1<<bitmaskvar): #暂时懒得去判断null_bitmask了...
 			#print(columns[x],null_bitmask,x)
 			#print('SKIP:',x)
 			continue #这个字段是主键 或者为空就跳过
-		col = columns[x]
 		data_offset,var_offset,coldata = read_col(col,data_offset,var_offset,bdata)
 		tdata[x] = coldata
 		#print('read_row:',x,len(coldata))
