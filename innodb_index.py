@@ -74,6 +74,7 @@ def read_row(columns,key,bdata,offset):
 	null_bitmask = int.from_bytes(bdata[offset-5-null_bitmask_size:offset-5],'big')
 	var_offset = offset - 5 - null_bitmask_size #可变长字段偏移量
 	data_offset = offset
+	var_offset += 1 if len_column == 1 else 0
 	#读索引数据
 	for x in key:
 		col = columns[x]
