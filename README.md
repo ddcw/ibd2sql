@@ -35,6 +35,8 @@ wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
 github : https://github.com/ddcw/ibd2sql/releases
 
 
+某盘: https://pan.baidu.com/s/1IP5ZDXIOMwlzW6QTp0b_UA
+提取码: ddcw
 
 
 
