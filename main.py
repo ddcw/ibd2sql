@@ -1,190 +1,188 @@
-#@ddcw
-#
+#!/usr/bin/env python3
+#write by ddcw @https://github.com/ddcw/ibd2sql
+
+from ibd2sql import __version__
+from ibd2sql.ibd2sql import ibd2sql
 import argparse
 import sys,os
-import innodb_fil
-import innodb_sdi
-import innodb_inode
-import innodb_type
-import innodb_index
-import struct
-import base64
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'ibd2sql/')))
 
+_help = """
+--limit 限制行数, 返回指定的行数就退出, 默认-1 表示无限制
+--where1  根据字段匹配 比如 --where1="id>1 and id < 10"
+--where2  限制TRX范围, 比如 --where2=2,10  #即trx在2(含)到10(含)的事务修改的数据才会输出
+--where3  限制rollptr的. 同trx
+--force   是否跳过报错的
+--set     将set/enum(default) 的int转换为实际表示的字符串. (默认使用逗号隔开)
+--ddl     输出信息包含DDL
+--deleted 仅输出biao'ji
+--debug   调试, 输出的信息较多
+--parallel 设置并发数量(默认4)
+--debug-filename 调试的输出信息文件, 默认stdout
+--multivalue  每页数据使用一个insert
+--replace 使用replcae into 替换insert (和multialue冲突)
+--replace-table 替换表名(含DDL)
+--replcae-schema 替换数据库名
+--sdi-table 指定使用该表的sdi作为元数据信息(分区表要)
+--sdi-file  指定sdi文件(json)作为元数据信息(可以使用ibd2sdi生成相关信息)
+
+--page-min  设置起始页 (方便调试)
+--page-max   设置停止页 
+--page-count 限制解析的页数量(方便调试)
+--page-skip  跳过的page数量 也是方便调试的
+
+"""
+
+stout = """
+输出格式说明:
+int等输出为无引号字符串
+binary输出为base64
+其它均输出为字符串
+"""
 
 def _argparse():
 	parser = argparse.ArgumentParser(add_help=True, description='解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql')
 	parser.add_argument('--version', '-v', '-V', action='store_true', dest="VERSION", default=False,  help='show version')
-	parser.add_argument('--sumary', '-s', action='store_true', dest="SUMMARY", default=True,  help='print summary info(ddl and index info)')
 	parser.add_argument('--ddl', '-d', action='store_true', dest="DDL", default=False,  help='print ddl')
-	parser.add_argument('--sql', action='store_true', dest="SQL", default=False,  help='print data with sql (without ddl)')
-	parser.add_argument('--data', action='store_true', dest="DATA", default=False,  help='print data like [[],[]]')
-	parser.add_argument('--delete', action='store_true', dest="DELETED", default=False,  help='print data with flag:deleted')
-	parser.add_argument('--complete-insert', action='store_true', dest="COLUMN_NAME", default=False,  help='use complete insert statements for sql')
-	#parser.add_argument('--char-size', dest="CHAR_SIZE", default=3,choices=[1,2,3,4],  help='size of per char, default 3')
-	parser.add_argument('--row', action='store_true', dest="ROW", default=False,  help='print rows in filename without deleted')
-	parser.add_argument('--force','-f', action='store_true', dest="FORCE", default=False,  help='force pasrser file')
-	parser.add_argument('--table-name', dest="TNAME", default=None,  help='replace table name except ddl')
-	#parser.add_argument('--parallel','-p', action='store', dest="PARALLEL", default=4,  help='parse to data/sql with N threads.(default 4) TODO')
+	parser.add_argument('--sql', action='store_true', dest="SQL", default=False,  help='print data by sql')
+	parser.add_argument('--delete', action='store_true', dest="DELETED", default=False,  help='print data only for flag of deleted')
+	parser.add_argument('--complete-insert', action='store_true', dest="COMPLETE_INSERT", default=False,  help='use complete insert statements for sql')
+	parser.add_argument('--force','-f', action='store_true', dest="FORCE", default=False,  help='force pasrser file when Error Page')
+	parser.add_argument('--set', action='store_true', dest="SET", default=False,  help='set/enum to fill in actual data instead of strings')
+	parser.add_argument('--multi-value', action='store_true', dest="MULTI_VALUE", default=False,  help='single sql if data belong to one page')
+	parser.add_argument('--replace', action='store_true', dest="REPLACE", default=False,  help='"REPLACE INTO" replace to "INSERT INTO" (default)')
+	parser.add_argument('--table', dest="TABLE_NAME", help='replace table name except ddl')
+	parser.add_argument('--schema', dest="SCHEMA_NAME", help='replace table name except ddl')
+	parser.add_argument('--sdi-table', dest="SDI_TABLE", help='read SDI PAGE from this file(ibd)(partition table)')
 
-	parser.add_argument(dest='FILENAME', help='ibd filename')
+	#where条件
+	parser.add_argument('--where-trx', dest="WHERE_TRX", help='default (0,281474976710656)')
+	parser.add_argument('--where-rollptr', dest="WHERE_ROLLPTR", help='default (0,72057594037927936)')
+	parser.add_argument('--where', dest="WHERE", help='filter data(TODO)')
+	parser.add_argument('--limit', dest="LIMIT", type=int, help='limit rows')
+
+	#DEBUG相关, 方便调试
+	parser.add_argument('--debug', '-D', action='store_true', dest="DEBUG", default=False,  help="will DEBUG (it's too big)")
+	parser.add_argument('--debug-file', dest="DEBUG_FILE", help='default sys.stdout if DEBUG')
+	parser.add_argument('--page-min', action='store', type=int, dest="PAGE_MIN", default=0, help='if PAGE NO less than it, will break')
+	parser.add_argument('--page-max', action='store', type=int, dest="PAGE_MAX", default=4294967296, help='if PAGE NO great than it, will break')
+	parser.add_argument('--page-start', action='store', type=int, dest="PAGE_START", help='INDEX PAGE START NO')
+	parser.add_argument('--page-count', action='store', type=int, dest="PAGE_COUNT", help='page count NO')
+	parser.add_argument('--page-skip', action='store', type=int, dest="PAGE_SKIP", help='skip some pages when start parse index page')
+
+	#TODO
+	parser.add_argument('--parallel','-p', action='store', dest="PARALLEL", default=4,  help='parse to data/sql with N threads.(default 4) TODO')
+
+	#IBD FILE
+	parser.add_argument(dest='FILENAME', help='ibd filename', nargs='?')
 
 	if parser.parse_args().VERSION:
-		print("VERSION: v0.3 for mysql8.0")
+		#print("VERSION: v1.0 only for MySQL 8.0")
+		print(f"ibd2sql VERSION: v{__version__} only for MySQL 8.0")
 		sys.exit(0)
 
 	return parser.parse_args()
 
 if __name__ == '__main__':
 	parser = _argparse()
+	#对部分默认值做处理
+	if not parser.SQL:
+		parser.DDL = True
 	filename = parser.FILENAME
 	if not os.path.exists(filename):
-		#print(f'no file {filename}')
-		raise f'no file {filename}'
+		#raise f'no file {filename}'
+		sys.stderr.write(f"\nno file {filename}\n\n")
+		sys.exit(1)
+	#不管debug file了
+	if parser.DEBUG_FILE is not None and os.path.exists(filename):
+		pass
 
-	if parser.SUMMARY and not (parser.DDL or parser.SQL or parser.DATA or parser.DELETED):
-		data = innodb_fil.page_summary(filename)
-		print(f"PAGE SUMMARY: { 'USED PERCENT:'+str(round(100-(data['FIL_PAGE_TYPE_ALLOCATED'])*100/sum([data[x] for x in data]),2))+'%' if 'FIL_PAGE_TYPE_ALLOCATED' in data else '' }")
-		for x in data:
-			print(f"{x}\t{data[x]}")
-		print('')
+	#初始化一个ibd2sql对象, 然后设置它的属性
+	ddcw = ibd2sql()
+	ddcw.FILENAME = parser.FILENAME
+	if parser.DEBUG:
+		ddcw.DEBUG = True
+	if parser.SDI_TABLE:
+		ddcw.IS_PARTITION = True
 
-		sdata = b''
-		with open(filename, 'rb') as f:
-			fsp_bdata = f.read(16384)
-			sdi_page_no = struct.unpack('>I',fsp_bdata[10509:10509+4])[0]
-			f.seek(16384*sdi_page_no,0)
-			sdata = f.read(16384)
+	ddcw.COMPLETE_SQL = True if parser.COMPLETE_INSERT else False
 
-		#DDL(sdi)
-		ddl = innodb_sdi.sdi(sdata)
-		print(ddl.get_ddl(),'\n')
+	#基础过滤信息
+	ddcw.REPLACE = True if parser.REPLACE else False
+	if parser.PAGE_COUNT:
+		ddcw.PAGE_COUNT = parser.PAGE_COUNT
+	if parser.PAGE_MIN:
+		ddcw.PAGE_MIN = parser.PAGE_MIN
+	if parser.PAGE_MAX:
+		ddcw.PAGE_MAX = parser.PAGE_MAX
+	if parser.PAGE_START:
+		ddcw.PAGE_START = parser.PAGE_START
+	if parser.PAGE_SKIP:
+		ddcw.PAGE_SKIP = parser.PAGE_SKIP
+	if parser.FORCE:
+		ddcw.FORCE = parser.FORCE
 
-		#打印行数量
-		if parser.ROW:
-			rows = 0
-			dic = innodb_sdi.sdi(filename).get_dic()
-			columns = dic['dd_object']['columns']
-			_columns = []
-			for col in columns:
-				if col['name'] in ['DB_TRX_ID','DB_ROLL_PTR','DB_ROW_ID']:
-					continue
-				_columns.append(col)
-			columns = []
-			lcolumns = len(columns)
-			for x in range(len(_columns)):
-				extra = ()
-				try:
-					isvar,size,dtype = innodb_type.innodb_isvar_size(_columns[x])
-				except:
-					isvar,size,dtype,extra = innodb_type.innodb_isvar_size(_columns[x])
-				columns.append({'name':_columns[x]['name'], 'isvar':isvar, 'size':size, 'dtype':dtype,'extra':extra,'charsize':3})
+	#替换分区表的SDI信息
+	if parser.SDI_TABLE:
+		ddcw.IS_PARTITION = True
+		aa = ibd2sql()
+		aa.FILENAME = parser.SDI_TABLE
+		aa.init()
+		ddcw.table = aa.table
+		ddcw._init_table_name()
+		aa.close()
 
-			pk = []
-			for x in dic['dd_object']['indexes'][0]['elements']:
-				if x['length'] < 4294967295:
-					pk.append(x['column_opx'])
-			pageno = innodb_index.first_leaf(filename,columns,pk)
-			with open(filename, 'rb') as f:
-				while True:
-					f.seek(pageno*16384,0)
-					bdata = f.read(16384)
-					if bdata == b'':
-						break
-					pageno = struct.unpack('>L',bdata[12:16])[0]
-					if struct.unpack('>H',bdata[24:26])[0] == 17855:
-						rows += struct.unpack('>H',bdata[38+16:38+18])[0]
-			print('ROWS:',rows)
-		sys.exit(0)
+
+	if parser.DEBUG_FILE is not None:
+		f = open(parser.DEBUG_FILE,'a')
+		ddcw.DEBUG = True
+		ddcw.DEBUG_FD = f
+
+	if parser.DELETED:
+		ddcw.DELETE = True
+
+	if parser.SET:
+		ddcw.SET = True
+	
+	if parser.MULTI_VALUE:
+		ddcw.MULTIVALUE = True
+
+	#条件
+	if parser.WHERE_TRX:
+		_a = [ int(x) for x in parser.WHERE_TRX.split(',')]
+		ddcw.WHERE2 = _a[:2]
+
+	if parser.WHERE_ROLLPTR:
+		_a = [ int(x) for x in parser.WHERE_ROLLPTR.split(',')]
+		ddcw.WHERE3 = _a[:2]
+
+
+	#初始化, 解析表
+	ddcw.init()
+
+	if parser.TABLE_NAME:
+		ddcw.replace_name(parser.TABLE_NAME)
+
+	if parser.SCHEMA_NAME:
+		ddcw.replace_schema(parser.SCHEMA_NAME)
 
 	if parser.DDL:
-		print('\n',innodb_sdi.sdi(filename).get_ddl(),'\n')
+		print(ddcw.get_ddl())
 
-	if parser.SQL or parser.DATA or parser.DELETED:
-		dic = innodb_sdi.sdi(filename).get_dic()
-		columns = dic['dd_object']['columns']
-		_columns = []
-		for col in columns:
-			if col['name'] in ['DB_TRX_ID','DB_ROLL_PTR','DB_ROW_ID']:
-				continue
-			_columns.append(col)
-		columns = []
-		lcolumns = len(columns)
-		for x in range(len(_columns)):
-			#isvar,size,dtype = innodb_type.innodb_isvar_size(_columns[x])
-			extra = ()
-			try:
-				isvar,size,dtype = innodb_type.innodb_isvar_size(_columns[x])
-			except:
-				isvar,size,dtype,extra = innodb_type.innodb_isvar_size(_columns[x])
-			columns.append({'name':_columns[x]['name'], 'isvar':isvar, 'size':size, 'dtype':dtype, 'is_unsigned':_columns[x]['is_unsigned'],'extra':extra,'charsize':3})
-			if dtype in ['enum','set']:
-				#虽然我解析了, 但是后面每使用, 主要还是觉得数字方便..
-				_set_list = ['',]
-				for el in _columns[x]['elements']:
-					_set_list.append(base64.b64decode(el['name']).decode())
-				if dtype == 'enum':
-					columns[x]['size'] = 1 if len(_set_list) <= 8 else 2
-				if dtype == 'set':
-					columns[x]['size'] = int((len(_set_list)+7)/8)
-					columns[x]['size'] = 8 if columns[x]['size'] > 4 else columns[x]['size']
-				columns[x]['list'] = _set_list
-		
-		NO_COL = []	
-		for x in columns:
-			if x['dtype'] in ['longtext','longblob','mediumblob','mediumtext','json'] :
-				NO_COL.append({x['name']:x['dtype']})
-		if len(NO_COL) > 0 and not parser.FORCE:
-			print('Some type are currently not supported.')
-			print(NO_COL)
-			sys.exit(2)
+	
+	ddcw.MULTIVALUE = True if parser.MULTI_VALUE and not parser.REPLACE else False
+	ddcw.REPLACE = True if parser.REPLACE else False
+	ddcw.LIMIT = parser.LIMIT if parser.LIMIT else -1
+	if parser.SQL and ddcw.table.row_format in ['DYNAMIC','COMPACT']:
+		ddcw.get_sql()
+	elif not ddcw.table.row_format in ['DYNAMIC','COMPACT']:
+		sys.stderr.write(f"\nNot support row format. {ddcw.table.row_format}\n\n")
 
-		pk = []
-		for x in dic['dd_object']['indexes'][0]['elements']:
-			if x['length'] < 4294967295:
-				pk.append(x['column_opx'])
 
-		TABLE_SCHEMA = f'`{dic["dd_object"]["schema_ref"]}`.`{dic["dd_object"]["name"]}`' if parser.TNAME is None else parser.TNAME
-			
-		#读取INDEX页
-		with open(filename,'rb') as f:
-
-			#先找到主键索引叶子节点第一个PAGE(不一定在碎片页中, 毕竟第一页可能多次更新就没用了...)
-			#非叶子节点还是固定的, 就在第4页(从0开始算). 也可以从sdi信息读主键索引的root
-			pageno = innodb_index.first_leaf(filename,columns,pk)
-					
-			while True:
-				if pageno > 4294967295:
-					break
-				f.seek(pageno*16384,0)
-				bdata = f.read(16384)
-				if len(bdata) <16384:
-					break
-				page = innodb_fil.page(bdata)
-				pageno = page.FIL_PAGE_NEXT
-				if page.FIL_PAGE_TYPE != 17855:
-					continue
-				if parser.DELETED:
-					ldata = innodb_index.index_deleted(bdata,pk,columns)
-				else:
-					ldata = innodb_index.index(bdata,pk,columns)
-				for x in range(len(ldata)):
-					if parser.DATA:
-						print(ldata[x])
-						continue
-					elif parser.COLUMN_NAME:
-						sql = f"INSERT INTO {TABLE_SCHEMA}("
-						for k in columns:
-							sql += f"{k['name']}, "
-						sql  = sql[:-2] + ")"
-					else:
-						sql = f"INSERT INTO {TABLE_SCHEMA} "
-					sql += "VALUES("
-					for i in range(len(ldata[x])):
-						if columns[i]['dtype'] in ['int','tinyint','smallint','mediumint','bigint','float','double','decimal','bit','set','enum']:
-							sql += f"{ldata[x][i]}, "
-						else:
-							sql += f"'{ldata[x][i]}', "
-					sql = sql[:-2] + ");"
-					print(str(sql))
-					continue
-						
+	#记得关闭相关FD
+	ddcw.close()
+	if parser.DEBUG_FILE is not None:
+		try:
+			f.close()
+		except:
+			pass
