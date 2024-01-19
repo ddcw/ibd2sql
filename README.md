@@ -1,68 +1,79 @@
 # 介绍
 
-  ibd2sql 可以提取innodb ibd文件的元数据信息, 并拼接为 DDL , 还可以根据元数据信息解析ibd文件中的数据insert/replace SQL语句.
+​	**ibd2sql**  是使用python3 编写的 提取**mysql 8.0** innodb存储引擎在磁盘上的 ibd 文件信息为**SQL语句**的工具. 
 
-  仅支持**mysql 8.0** .
+不需要连接数据库, 只需要对目录ibd文件有可读权限即可. 无第三方依赖包, **纯python3代码**. 使用**GPL-3.0** license.
 
+​	[博客介绍](https://cloud.tencent.com/developer/article/2377921)
 
+​	视频介绍
 
-# 功能特点
-
-1. 提取DDL
-2. 提取SQL为insert/replace语句
-3. 提取标记为delete的数据
-4. 根据条件过滤相关数据行
-5. 可使用DEBUG来查看解析过程
-6. 无第三方依赖包, 纯python3代码写的.
-7. 支持分区表,前缀索引等
+​	[旧版README](https://github.com/ddcw/ibd2sql/blob/main/README_OLD.md)
 
 
 
+# 功能特点:
+
+1. **方便**: 提取表DDL
+2. **实用**: 可替换库(--schema)/表(--table)名, 可在sql语句中输出完整的字段(--complete)
+3. **简单**: 纯python3代码编写, **无依赖包**.  还可以使用**--debug**查看解析过程
+4. **选择性强**: 可以根据条件过滤符合要求的数据 --where , --limit
+5. **支持众多数据类型**: 支持除 空间坐标 数据类型外的**所有mysql数据类型** (比如 int, decimal, date, varchar, char, **json**, binary, enum, set, blob/text, longblob等).
+6. **支持复杂的表结构**: 分区表, 注释, 主键, 外键, 约束, 自增, 普通索引, 前缀索引, 主键前缀索引, 唯一索引, 复合索引, 默认值, 符号, 虚拟字段, INSTANT, 无主键等情况的表
+7. **数据误删恢复**: 可以输出被标记为deleted的数据
+8. **安全**: 离线解析ibd文件, 仅可读权限即可
 
 
-# 下载和使用方法
 
-## 下载
+# 安装下载
 
-## 源码下载:
+## Linux 环境下载
 
-```shell
-wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
+```
+wget https://codeload.github.com/ddcw/ibd2sql/zip/refs/heads/main
 ```
 
-## 二进制下载:
+或者
 
-github : https://github.com/ddcw/ibd2sql/releases
-
-
-某盘: https://pan.baidu.com/s/1IP5ZDXIOMwlzW6QTp0b_UA
-提取码: ddcw
+```
+wget https://github.com/ddcw/ibd2sql/releases/download/v1.0/ibd2sql_v1.0_linux_x86_64.tar.gz
+```
 
 
 
-## 使用
+## windows 环境下载
 
-由于无第三方依赖包, 建议使用源码
+https://codeload.github.com/ddcw/ibd2sql/zip/refs/heads/main
+
+或者
+
+https://github.com/ddcw/ibd2sql/releases/download/v1.0/ibd2sql_v1.0_win_x86_64.zip
+
+或者
+
+某盘:[https://pan.baidu.com/s/1IP5ZDXIOMwlzW6QTp0b_UA](https://cloud.tencent.com/developer/tools/blog-entry?target=https%3A%2F%2Fpan.baidu.com%2Fs%2F1IP5ZDXIOMwlzW6QTp0b_UA&source=article&objectId=2377921)提取码: ddcw
+
+
+
+# 使用例子
+
+可使用 `python3 main.py -h` 查看帮助信息
 
 ```shell
-SHELL> python3 main.py --help
-usage: main.py [-h] [--version] [--ddl] [--sql] [--delete] [--complete-insert]
-               [--force] [--set] [--multi-value] [--replace]
-               [--table TABLE_NAME] [--schema SCHEMA_NAME]
-               [--sdi-table SDI_TABLE] [--where-trx WHERE_TRX]
-               [--where-rollptr WHERE_ROLLPTR] [--where WHERE] [--limit LIMIT]
-               [--debug] [--debug-file DEBUG_FILE] [--page-min PAGE_MIN]
-               [--page-max PAGE_MAX] [--page-start PAGE_START]
-               [--page-count PAGE_COUNT] [--page-skip PAGE_SKIP]
-               [--parallel PARALLEL]
-               FILENAME
+SHELL> python3 main.py -h
+usage: main.py [-h] [--version] [--ddl] [--sql] [--delete] [--complete-insert] [--force] [--set] [--multi-value] [--replace]
+               [--table TABLE_NAME] [--schema SCHEMA_NAME] [--sdi-table SDI_TABLE] [--where-trx WHERE_TRX]
+               [--where-rollptr WHERE_ROLLPTR] [--where WHERE] [--limit LIMIT] [--debug] [--debug-file DEBUG_FILE]
+               [--page-min PAGE_MIN] [--page-max PAGE_MAX] [--page-start PAGE_START] [--page-count PAGE_COUNT]
+               [--page-skip PAGE_SKIP] [--parallel PARALLEL]
+               [FILENAME]
 
 解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql
 
 positional arguments:
   FILENAME              ibd filename
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --version, -v, -V     show version
   --ddl, -d             print ddl
@@ -96,187 +107,124 @@ optional arguments:
                         skip some pages when start parse index page
   --parallel PARALLEL, -p PARALLEL
                         parse to data/sql with N threads.(default 4) TODO
-
 ```
 
 
-
-
-
-# 使用例子
 
 ## 提取DDL
 
-说明: DDL不包含row_format
+--ddl 提取ddl
 
 ```shell
-SHELL> python main.py /data/mysql_3314/mysqldata/ibd2sql/t20240102_js.ibd --ddl
-CREATE TABLE IF NOT EXISTS `ibd2sql`.`t20240102_js`(
-    `id` int NOT NULL,
-    `name` varchar(200) NULL,
-    `aa` json NULL,
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --ddl
+CREATE TABLE IF NOT EXISTS `ibd2sql`.`ddcw_alltype_table`(
+    `id` int NOT NULL AUTO_INCREMENT,
+    `int_col` int NULL,
+    `tinyint_col` tinyint NULL DEFAULT '1',
+    `smallint_col` smallint NULL,
+    `mediumint_col` mediumint NULL,
+    `bigint_col` bigint NULL,
+    `float_col` float NULL,
+    `double_col` double NULL,
+    `decimal_col` decimal(10,2) NULL,
+    `date_col` date NULL,
+    `datetime_col` datetime NULL,
+    `timestamp_col` timestamp NULL,
+    `time_col` time NULL,
+    `year_col` year NULL,
+    `char_col` char(100) NULL,
+    `varchar_col` varchar(100) NULL,
+    `binary_col` binary(10) NULL,
+    `varbinary_col` varbinary(20) NULL,
+    `bit_col` bit(4) NULL,
+    `enum_col` enum('A','B','C') NULL,
+    `set_col` set('X','Y','Z') NULL,
+    `josn_type` json NULL,
     PRIMARY KEY  (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ;
-
 ```
 
-
-
-## 提取SQL
-
-如果有溢出页, 就将溢出页字段置为Null
-
-binary类型默认为 base64
-
 ```shell
-SHELL> python main.py /data/mysql_3314/mysqldata/ibd2sql/AllTypesExample.ibd --sql
-REPLACE INTO `ibd2sql`.`AllTypesExample` VALUES (3, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, '2000-2-29', '2000-2-29 0:0:0', '2023-8-30 14:32:35.', '0:0:0', 2001, '00000', 'Zero', 0x3030303030, '00000', 0, C, X,Z, '{"AA": {"BB": true, "CC": [{"dd": null}]}}');
-```
-
-
-
-## 提取被标记为deleted的行
-
-```shell
-SHELL> python main.py /data/mysql_3314/mysqldata/ibd2sql/AllTypesExample.ibd --sql --delete --complete
-REPLACE INTO `ibd2sql`.`AllTypesExample`(`id`,`int_col`,`tinyint_col`,`smallint_col`,`mediumint_col`,`bigint_col`,`float_col`,`double_col`,`decimal_col`,`date_col`,`datetime_col`,`timestamp_col`,`time_col`,`year_col`,`char_col`,`varchar_col`,`binary_col`,`varbinary_col`,`bit_col`,`enum_col`,`set_col`,`josn_type`) VALUES (4, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, '2000-2-29', '2000-2-29 0:0:0', '2023-8-30 14:32:35.', '0:0:0', 2001, '00000', 'Zero', 0x3030303030, '00000', 0, 'C', 'X,Z', '{"AA": {"BB": true, "CC": [{"dd": null}]}}');
-
-
-```
-
-
-
-## 解析分区表
-
-要使用--sdi-table指定元数据信息所在的第一个分区
-
-```shell
-SHELL> python main.py /data/mysql_3314/mysqldata/ibd2sql/t20240105_hash#p#p2.ibd --sdi-table /data/mysql_3314/mysqldata/ibd2sql/t20240105_hash#p#p0.ibd --sql --ddl
-CREATE TABLE IF NOT EXISTS `ibd2sql`.`t20240105_hash`(
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_blob7.ibd 
+CREATE TABLE IF NOT EXISTS `ibd2sql`.`ddcw_blob7`(
     `id` int NULL,
-    `name` varchar(20) NULL,
-    `bt` date NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
-/*!50100 PARTITION BY HASH (year(`bt`))
-PARTITIONS 4 */;
-INSERT INTO `ibd2sql`.`t20240105_hash` VALUES (1, 'aa', '1998-1-1');
+    `c_lb` longblob NULL,
+    `c_lt` longtext NULL,
+    `c_ml` mediumblob NULL,
+    `c_mb` mediumtext NULL,
+    `c_t` text NULL,
+    `c_b` blob NULL,
+    `c_tb` tinyblob NULL,
+    `c_tt` tinytext NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ;
 ```
 
 
 
 
 
-# 支持内容
+## 提取为SQL
 
-## 表属性
+--sql
 
-| 对象           | 是否支持 | 描述                      |
-| ------------ | ---- | ----------------------- |
-| 存储引擎         | 支持   | 仅支持innodb               |
-| 字符集          | 支持   |                         |
-| 排序规则         | 支持   |                         |
-| 分区表(仅一级分区)   | 支持   |                         |
-| 表和schema名字替换 | 支持   |                         |
-| 注释           | 支持   |                         |
-| row_format   | 不支持  | only DYNAMIC or COMPACT |
+```shell
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --limit 1
 
-
-
-## 字段属性
-
-| 对象   | 是否支持 | 描述        |
-| ---- | ---- | --------- |
-| 是否为空 | 支持   |           |
-| 虚拟列  | 支持   | 虚拟列不参与行解析 |
-| 默认值  | 支持   |           |
-| 自增   | 支持   |           |
-| 注释   | 支持   |           |
-| 符号   | 支持   | 数字类型存在符号  |
-
-
-
-## 索引相关
-
-| 对象     | 是否支持 | 描述            |
-| ------ | ---- | ------------- |
-| 主键索引   | 支持   |               |
-| 唯一索引   | 支持   |               |
-| 普通索引   | 支持   |               |
-| 虚拟列的索引 | 支持   |               |
-| 前缀索引   | 支持   | 前缀索引KEY数据不完整. |
-| 复合索引   | 支持   |               |
-
-
-
-## 数据类型
-
-基本上除了空间类型外, 都支持, 但对于blob等大对象, 仅支持非溢出页的情况
-
-参考:https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html
-
-### 数据类型
-
-整型均支持符号, 第一bit位为符号位(如果有符号的话) 取值方式为:
-
-```python3
-_t 是数据
-_s 是字节数
-(_t&((1<<_s)-1))-2**_s if _t < 2**_s and not is_unsigned else (_t&((1<<_s)-1))
-```
-
-| 对象           | 存储占用空间(字节)                   | 存储方式   | 范围(仅考虑有符号的情况)          |
-| ------------ | ---------------------------- | ------ | ---------------------- |
-| tinyint      | 1                            |        | -128-128               |
-| smallint     | 2                            | 大端字节序  | -32768-32768           |
-| int          | 4                            | 大端字节序  | -2147483648-2147483648 |
-| float(n)     | size = 4 if ext <= 24 else 8 | float  |                        |
-| double       | 8                            | double |                        |
-| bigint       | 8                            | 大端字节序  |                        |
-| mediumint    | 3                            | 大端字节序  | -8388608-8388608       |
-| decimal(m,n) |                              |        |                        |
-|              |                              |        |                        |
-
-### 时间类型
-
-| 对象           | 存储空间(字节) | 描述    | 取值范围                                     |
-| ------------ | -------- | ----- | ---------------------------------------- |
-| date         | 3        |       | '1000-01-01' to '9999-12-31'             |
-| datetime(n)  | 5+N      |       | '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999' |
-| time(n)      | 3+N      |       | '-838:59:59.000000' to '838:59:59.000000' |
-| timestamp(n) | 4+N      |       | '1000-01-01' to '9999-12-31'             |
-| year         | 1        | +1900 | '1901' to '2115'                         |
-
-N计算方式
+INSERT INTO `ibd2sql`.`ddcw_alltype_table` VALUES (2, 5267711, 89, -3652, 5951, 7237, 703.0, 7002.0, 3127.0, '2009-3-23', '2013-7-15 2:17:10', '1997-4-4 21:22:22.', '22:57:11', 2004, 'HucLseQCOUgEvXuBrDoOGcKvWaNRYSbDmQRQJVlYqZeEoPIcLlxUqwFHcgPMMqBBPLteFZluWLQGpKCcUjnzFubtVjI', 'lpRwpchqJAlQtiVfWFvtNyRVijXcEkYwGXkQRcBlIGlohXSiFFMyhdVFwmLgMQIYYhRvbBkdgWwSBtbo', 0x36390000000000000000, '30', 1, 'B', 'Y', '{"aa": "c", "bb": {"dd": 1}}');
 
 ```
-N = int((n+1)/2)
+
+binary数据会被转为 base64
+
+set/enum会被替换为实际值(v0.3版本是使用数字表示)
+
+
+
+
+
+## 提取被标记为deleted的数据行
+
+--delete
+
+```shell
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --delete
+
+INSERT INTO `ibd2sql`.`ddcw_alltype_table` VALUES (1, 2501406, 42, -167, -166, 4487, 5219.0, 1929.0, -6618.0, '2008-9-14', '2013-5-24 10:53:43', '2006-2-15 16:6:35.', '19:8:27', 2003, 'bczTYGympcbqhuMPLpxNtkyMawChejIBhatxsGmdqLUOPnuYhjvMSowMoXGnJ', 'vNBkvaPWq', 0x36380000000000000000, '60', 1, 'B', 'X', '{"aa": "c", "bb": {"dd": 1}}');
 ```
 
 
 
-### 字符类型
-
-| 类型                       | 大小(字节)                                   | 范围        | 备注    |
-| ------------------------ | ---------------------------------------- | --------- | ----- |
-| char(M)                  | L                                        | <=255 字符  |       |
-| BINARY(M)                | M                                        | <=255 字节  |       |
-| VARCHAR(M), VARBINARY(M) | 1 字节长度 + L: 当 L < 1282 字节长度 + L: 当L >=128 | <=65535字节 |       |
-| TINYBLOB, TINYTEXT       | L + 1 bytes, where L < 256               | < 256 B   |       |
-| BLOB, TEXT               | L + 2 bytes, where L < 2**16             | <=65535字节 | 仅非溢出页 |
-| MEDIUMBLOB, MEDIUMTEXT   | L + 3 bytes, where L < 2**24             | 16M       | 仅非溢出页 |
-| LONGBLOB, LONGTEXT       | L + 4 bytes, where L < 2**32             | 4G        | 仅非溢出页 |
-|                          |                                          |           |       |
 
 
 
-### 其它类型
 
-| 类型   | 大小                                       | 范围   | 备注         |
-| ---- | ---------------------------------------- | ---- | ---------- |
-| ENUM | 1 or 2 bytes, depending on the number of enumeration values (65,535 values maximum) |      | 使用数字表示     |
-| SET  | 1, 2, 3, 4, or 8 bytes, depending on the number of set members (64 members maximum) |      | 使用数字表示     |
-| JSON | 仅非溢出页                                    |      | mysql二进制化的 |
-| 空间坐标 |                                          |      | 不支持        |
+## 提取分区表的数据
+
+--sdi-table  xxx#p0.ibd
+
+```shell
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_hash#p#p3.ibd --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_hash#p#p0.ibd  --sql --limit 1
+
+INSERT INTO `ibd2sql`.`ddcw_partition_hash` VALUES (3, 'gDVcQkNrvazHbXwZuSPIcPbgZhdUoqxXgCEyoaadhhZOnwYm', '2007-4-24 8:23:16');
+```
+
+
+
+## 完整字段信息
+
+--complete
+
+```shell
+SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --limit 1 --complete --limit 2
+
+INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallint_col`,`mediumint_col`,`bigint_col`,`float_col`,`double_col`,`decimal_col`,`date_col`,`datetime_col`,`timestamp_col`,`time_col`,`year_col`,`char_col`,`varchar_col`,`binary_col`,`varbinary_col`,`bit_col`,`enum_col`,`set_col`,`josn_type`) VALUES (2, 5267711, 89, -3652, 5951, 7237, 703.0, 7002.0, 3127.0, '2009-3-23', '2013-7-15 2:17:10', '1997-4-4 21:22:22.', '22:57:11', 2004, 'HucLseQCOUgEvXuBrDoOGcKvWaNRYSbDmQRQJVlYqZeEoPIcLlxUqwFHcgPMMqBBPLteFZluWLQGpKCcUjnzFubtVjI', 'lpRwpchqJAlQtiVfWFvtNyRVijXcEkYwGXkQRcBlIGlohXSiFFMyhdVFwmLgMQIYYhRvbBkdgWwSBtbo', 0x36390000000000000000, '30', 1, 'B', 'Y', '{"aa": "c", "bb": {"dd": 1}}');
+INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallint_col`,`mediumint_col`,`bigint_col`,`float_col`,`double_col`,`decimal_col`,`date_col`,`datetime_col`,`timestamp_col`,`time_col`,`year_col`,`char_col`,`varchar_col`,`binary_col`,`varbinary_col`,`bit_col`,`enum_col`,`set_col`,`josn_type`) VALUES (3, 5232618, 125, -1229, 1006, -5722, 1136.0, -1642.0, -772.0, '1996-7-8', '2015-11-9 12:9:10', '2012-4-7 10:51:38.', '15:32:17', 2000, 'BMbYVTsNflhwviayJbWqMaTg', 'KOawMw', 0x36370000000000000000, '85', 1, 'A', 'Y', '{"aa": "c", "bb": {"dd": 1}}');
+
+```
+
+
+
+
 
 
 
@@ -293,7 +241,7 @@ N = int((n+1)/2)
 
 
 
-# 修复已知问题
+# BUG修复
 
 1. [前缀索引](https://www.modb.pro/db/1700402156981538816)支持. 前缀索引完整数据在数据字段而不是KEY
 2. [json/blob等大对象](https://www.modb.pro/db/626066)支持:  支持非溢出页的大对象
@@ -301,245 +249,56 @@ N = int((n+1)/2)
 4. [bigint类型,注释,表属性](https://github.com/ddcw/ibd2sql/issues/2) : 支持更多数据类型, 和表属性
 5. [只有1个主键和其它](https://github.com/ddcw/ibd2sql/issues/4) : 支持只有1个主键的情况, 并新增DEBUG功能
 
+ 
 
+# 支持范围
 
-# 其它
+环境要求:  python3 或者 使用已编译好的[二进制程序](https://github.com/ddcw/ibd2sql/releases/download/v1.0/ibd2sql_v1.0_linux_x86_64.tar.gz)
 
-比较杂, 基本上就是解析Ibd文件的时候遇到的不平坦的路
+对象支持:  mysql 8.x 下几乎所有数据类型,表属性
 
+如下情况不支持:
 
+1. 二级分区 (不支持)
+2. 溢出页 (默认置为null)
+3. 空间坐标字段
 
-## JSON格式
 
-json是mysql对其二进制化的, 所以对于数字的存储是使用的小端, 对于可变长字符串存储是使用的256*128这种
 
-```
-                如果第一bit是1 就表示要使用2字节表示:
-                        后面1字节表示 使用有多少个128字节, 然后加上前面1字节(除了第一bit)的数据(0-127) 就是最终数据
------------------------------------------------------
-| 1 bit flag | 7 bit data | if flag, 8 bit data*128 |
------------------------------------------------------
-```
 
-```
-                                                               - -----------------
-                                                              | JSON OBJECT/ARRAY |
-                                                               - -----------------
-                                                                      |
- -------------------------------------------------------------------------
-| TYPE | ELEMENT_COUNT | KEY-ENTRY(if object) | VALUE-ENTRY | KEY | VALUE |
- -------------------------------------------------------------------------
-                               |                    |          |
-                               |                    |     --------------
-                   --------------------------       |    | UTF8MB4 DATA |
-                  | KEY-OFFSET |  KEY-LENGTH |      |     --------------
-                   --------------------------       |
-                                                    |
-                                         --------------------------------
-                                         | TYPE | OFFSET/VALUE(if small) |
-                                         --------------------------------
 
-```
+# 为什么使用ibdsql
 
+1. 学习python3
 
+   只是单纯的学习python3代码编写. 本工具使用的纯python3编写的, 无第三方依赖包, 适合学习python3
 
+   ​
 
+2.  学习mysql
 
-## 分区表
+   学习mysql的底层原理, innodb 各种数据类型在磁盘上的格式. 比如知道page_id为4字节, 就能计算出单个ibd文件的最大为 PAGE_SIZE\*PAGE_ID_MAX = 16KB\*(2^32)=64TB
 
-分区表的元数据信息都放在第一个分区的.
+   直接阅读源码的话, 难度太大. 就可以使用本工具 `--debug` 功能查看ibd解析过程. 还可以搭配`--page-min --page-max --page-start --page-count --page-skip`一起使用 
 
-`dd['object']['partitions']`
+   ​
 
+3. 数据恢复
 
+   比如不小心删除了某个ibd文件, 但好歹从磁盘上恢复出来了, 但不知道表结构, 就可以使用 --ddl 查看表结构了.
 
-## 前缀索引,唯一索引
+   或者不小心 delete了某些数据, 但又没开启binlog, 就可以使用 `--delete` 查看误删的数据了.
 
-前缀索引判断条件:
+   ​
 
-```
-indexes[x]['elements'][x]['length'] < col['char_length'] 
-```
+4.  其它
 
-如果是前缀索引, KEY位置存储的数据就不是完整的(主键为前缀索引的情况), 后面读剩余字段的时候还要包含前缀索引
+   ​	想看下第一行数据是啥, 登录数据库太麻烦了, 就可以 `--sql --limit 1`
 
+   ​	想看下在某个事务之后跟新的数据信息, 可以使用 --where-trx=(start_trx, end_trx) 查看在这个限制内更新的数据信息了.
 
+   ​	想导出数据到其它环境, 比如 `python main.py --limit 10 xxx.ibd --schema xxxx | mysql `
 
-唯一索引:
+   ​	查看表结构 `python main.py --ddl`
 
-```
-index[x]['type']如下值:
-1: PRIMARY
-2: UNIQUE
-3: NORMAL
-```
-
-
-
-
-
-## innodb varchar长度计算
-
-innodb的varchar存储长度计算
-
-```
-第一字节小于等于 128 字节时, 就1字节.  否则就第一字节超过128字节的部分 *256 再加上第二字节部分来表示总大小 就是256*256 =  65536
- _size = self.readreverse(1)
- size = struct.unpack('>B',_size)[0]
- if size > REC_N_FIELDS_ONE_BYTE_MAX:
- 	size = struct.unpack('>B',self.readreverse(1))[0] + (size-128)*256
- return size
-```
-
-
-
-
-
-## decimal计算
-
-```
-整数部分和小数部分是分开的
-
-每部分 的每9位10进制数占4字节,  剩余的就按 1-2 为1字节, 这样算
-
-比如 
-
-(5,2)   整数就是2字节, 小数也是1字节
-(10,3) 整数就是4+1字节, 小数就是2字节
-
-
-```
-
-计算方式参考:
-
-```python3
-total_digits, decimal_digits = re.compile('decimal\((.+)\)').findall(col['column_type_utf8'],)[0].split(',')
-total_digits = int(total_digits)
-decimal_digits = int(decimal_digits)
-integer_p1_count = int((total_digits - decimal_digits)/9) #
-integer_p2_count = total_digits - decimal_digits - integer_p1_count*9
-integer_size = integer_p1_count*4 + int((integer_p2_count+1)/2)
-decimal_p1_count = int(decimal_digits/9)
-decimal_p2_count = decimal_digits - decimal_p1_count*9
-decimal_size = decimal_p1_count*4 + int((decimal_p2_count+1)/2)
-total_size = integer_size + decimal_size
-
-size = total_size #decimal占用大小
-```
-
-
-
-
-
-## 时间类型计算
-
-date
-
-```
-固定3字节 1bit符号,  14bit年  4bit月  5bit日
------------------------------------
-|     signed   |     1  bit       |
------------------------------------
-|      year    |     14 bit       |
------------------------------------
-|     month    |     4  bit       |
------------------------------------
-|      day     |     5  bit       |
------------------------------------
-```
-
-
-
-datetime
-
-```
-5 bytes + fractional seconds storage
-1bit符号  year_month:17bit  day:5  hour:5  minute:6  second:6
----------------------------------------------------------------------
-|             signed                 |          1  bit              |     
-|--------------------------------------------------------------------
-|         year and month             |          17 bit              |
-|--------------------------------------------------------------------
-|             day                    |          5  bit              |
-|--------------------------------------------------------------------
-|             hour                   |          5  bit              |
-|--------------------------------------------------------------------
-|            minute                  |          6  bit              |
-|--------------------------------------------------------------------
-|            second                  |          6  bit              |
----------------------------------------------------------------------
-|      fractional seconds storage    |each 2 digits is stored 1 byte|
----------------------------------------------------------------------
-
-```
-
-
-
-time
-
-```
-1bit符号  hour:11bit    minute:6bit  second:6bit  精度1-3bytes
--------------------------------------------------------------------
-|            signed            |              1  bit              |
--------------------------------------------------------------------
-|             hour             |              11 bit              |
--------------------------------------------------------------------
-|            minute            |              6  bit              |
--------------------------------------------------------------------
-|            second            |              6  bit              |
--------------------------------------------------------------------
-|  fractional seconds storage  |  each 2 digits is stored 1 byte  |
--------------------------------------------------------------------
-
-```
-
-
-
-timestamp
-
-```
-4 bytes + fraction
-```
-
-
-
-
-
-
-
-## ONLINE DDL
-
-对于使用类似如下DDL  添加字段默认ALGORITHM是 INSTANT
-
-```
-ALTER TABLE tbl_name ADD COLUMN column_name column_definition, ALGORITHM=INSTANT;
-```
-
-为了快速添加字段, 会在元数据信息记录相关信息
-
-```
-dd_object:  "se_private_data": "instant_col=1;"
-column:     "se_private_data": "default=636363;table_id=2041;"
-```
-
-对于某行数据而言, 如果 record header中instant标记位为True, 则表示这行数据新增字段不是默认值, 而是要从数据位置读取(放在其它字段数据后面)
-
-```
-if recorde_header.instant and col['instant']:
-	read key
-	raed filed
-	read filed with instant
-	
-if not recorde_header.instant  and col['instant']:
-	rad key
-	read field   新增字段取默认值
-	
-```
-
-新增了多个字段之后, 需要注意下不是每行数据的字段数量都相等, 这时候就要使用到有instant之后在null bitmask和recored header之间记录的行数量了(含trx&rollptr).脚本对应变量为`_icc`
-
-
-
-## 寻找first leaf page
-
-有时候inode里面记录的不准... 这时候就要从root page开始往后面找leaf page了.  注意non-leaf page 是不需要trx和rollptr的, innodb的这些信息是记录在leaf page的.
+   ​
