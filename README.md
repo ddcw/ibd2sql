@@ -6,7 +6,7 @@
 
 ​	[博客介绍](https://cloud.tencent.com/developer/article/2377921)
 
-​	视频介绍
+​	[视频介绍](https://www.bilibili.com/video/BV1HK411a7DJ)
 
 ​	[旧版README](https://github.com/ddcw/ibd2sql/blob/main/README_OLD.md)
 
