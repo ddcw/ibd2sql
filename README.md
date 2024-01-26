@@ -248,6 +248,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 3. [5.7升级到8.0后找不到SDI](https://github.com/ddcw/ibd2sql/issues/5). :sdi pagno 记录在第一页
 4. [bigint类型,注释,表属性](https://github.com/ddcw/ibd2sql/issues/2) : 支持更多数据类型, 和表属性
 5. [只有1个主键和其它](https://github.com/ddcw/ibd2sql/issues/4) : 支持只有1个主键的情况, 并新增DEBUG功能
+5. [默认值为时间戳](https://github.com/ddcw/ibd2sql/issues/8) : 支持默认值为时间戳, blob等字段的前缀索引
 
  
 
