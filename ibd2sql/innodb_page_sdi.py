@@ -84,12 +84,15 @@ class TABLE(object):
 			ddl += f"`{col['name']}` {col['type']}" #column name
 			if self.COLUMN_COLL and col['type'] != 'int':
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
-			if not col['is_virtual']:
+			if not col['is_virtual'] and col["default_option"] == "":
 				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			else:
 				#虚拟列 VIRTUAL 
 				ddl += f"{' GENERATED ALWAYS AS (' + col['generation_expression'] + ') VIRTUAL' if col['is_virtual'] else '' }"
-			ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
+			if col["default_option"] != "":
+				ddl += f" DEFAULT ({col['default_option']})"
+			else:
+				ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
 			ddl += f"{' AUTO_INCREMENT' if col['is_auto_increment'] else ''}" #auto_increment
 			ddl += f"{' COMMENT '+repr(col['comment']) if col['comment'] != '' else '' }" #comment
 			#COLUMN_FORMAT 
@@ -238,6 +241,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'instant_value':se_private_data_default_value,
 				'instant_null':instant_null,
 				'generation_expression':col['generation_expression'],
+				'default_option':col['default_option'],
+				'collation_id':col['collation_id'],
 				'ct':ct #属于类型
 			}
 		self.table.column = column
@@ -257,9 +262,10 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 					continue
 				#判断前缀索引
 				prefix_key = 0
-				if self.table.column[x['column_opx']+1]['ct'] in ['varbinary','char']:
+				if self.table.column[x['column_opx']+1]['isvar']:
+					_varlen = 4 if self.table.column[x['column_opx']+1]['collation_id'] == 255 else 3 if self.table.column[x['column_opx']+1]['ct'] in ['varchar','char','varbinary'] and self.table.column[x['column_opx']+1]['type'][:4] != "varb" else 1
 					if self.table.column[x['column_opx']+1]['char_length'] > x['length']:
-						prefix_key = int(x['length']/4)
+						prefix_key = int(x['length']/_varlen)
 				element_col.append((x['column_opx']+1,prefix_key))
 				#/*column[ordinal_position] 从1开始计数,   idx['column_opx'] 从0开始计*/
 			if len(element_col) == 0:
