@@ -37,6 +37,7 @@ class TABLE(object):
 		self.CONSTRAINT = True #支持约束
 		self.PARTITIONS = True #支持分区
 		self.row_format = "DYNAMIC"
+		self.mysqld_version_id = 80028
 
 	def _set_name(self,):
 		self.name = f"`{self.schema}`.`{self.table_name}`"
@@ -90,7 +91,8 @@ class TABLE(object):
 				#虚拟列 VIRTUAL 
 				ddl += f"{' GENERATED ALWAYS AS (' + col['generation_expression'] + ') VIRTUAL' if col['is_virtual'] else '' }"
 			if col["default_option"] != "":
-				ddl += f" DEFAULT ({col['default_option']})"
+				#ddl += f" DEFAULT ({col['default_option']})"
+				ddl += f" DEFAULT ({col['default_option']})" if self.mysqld_version_id > 80012 else f" DEFAULT {col['default_option']}"
 			else:
 				ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
 			ddl += f"{' AUTO_INCREMENT' if col['is_auto_increment'] else ''}" #auto_increment
@@ -305,9 +307,10 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 
 		#CONSTRAINT CHECK
 		check = []
-		for chk in dd['dd_object']['check_constraints']:
-			chkv = base64.b64decode(chk['check_clause']).decode()
-			check.append(f"CONSTRAINT `{chk['name']}` CHECK {chkv}")
+		if "check_constraints" in dd['dd_object']: #for mysql 8.0.12
+			for chk in dd['dd_object']['check_constraints']:
+				chkv = base64.b64decode(chk['check_clause']).decode()
+				check.append(f"CONSTRAINT `{chk['name']}` CHECK {chkv}")
 		self.table.check = check
 		
 
@@ -345,6 +348,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		table_options['collate'] = COLLID_TO_CHAR[coll_id][1]
 		#table_options['se_private_data'] = dd['dd_object']['se_private_data'] #instant_col 做过ONLIE DDL的字段
 		self.table.table_options = table_options
+		self.table.mysqld_version_id = dd["mysqld_version_id"]
 		if dd['dd_object']['row_format'] == 3:
 			self.table.row_format = "COMPRESSED"
 		elif dd['dd_object']['row_format'] == 4:
