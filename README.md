@@ -263,6 +263,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 1. 二级分区 (不支持)
 2. 溢出页 (默认置为null)
 3. 空间坐标字段
+4. 不支持一张表存在多个字符集, 其实只支持utf8
 
 
 
