@@ -260,7 +260,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 			comment = idx['comment'] 
 			hidden = idx['hidden']
 			for x in idx['elements']:
-				if x['length'] == 4294967295 or x['hidden']:
+				if x['length'] == 4294967295: #fix issue 10 (mysql 8.0.12 has not hidden attr in index_metadata)
 					continue
 				#判断前缀索引
 				prefix_key = 0
