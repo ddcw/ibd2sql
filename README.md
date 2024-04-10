@@ -250,6 +250,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 5. [只有1个主键和其它](https://github.com/ddcw/ibd2sql/issues/4) : 支持只有1个主键的情况, 并新增DEBUG功能
 6. [默认值为时间戳](https://github.com/ddcw/ibd2sql/issues/8) : 支持默认值为时间戳, blob等字段的前缀索引
 7. [8.0.12 无hidden](https://github.com/ddcw/ibd2sql/issues/10) : 取消hidden检查
+8. [ONLINE DDL instant](https://github.com/ddcw/ibd2sql/issues/12) : 当作全部有instant
 
  
 
