@@ -43,15 +43,13 @@ class record_header(object):
 			return None
 		fb = struct.unpack('>B',bdata[:1])[0]
 		#print(fb&(REC_INFO_DELETED_FLAG*2),fb&(REC_INFO_DELETED_FLAG*4))
-		self.instant = True if fb&128 else False
+		self.instant = True if fb&128 or fb&64 else False # fix issue 12
 		self.deleted = True if fb&REC_INFO_DELETED_FLAG else False  #是否被删除
 		self.min_rec = True if fb&REC_INFO_MIN_REC_FLAG else False #if and only if the record is the first user record on a non-leaf
 		self.owned = fb&REC_N_OWNED_MASK # 大于0表示这个rec是这组的第一个, 就是地址被记录在page_directory里面
 		self.heap_no = struct.unpack('>H',bdata[1:3])[0]&REC_HEAP_NO_MASK #heap number, 0 min, 1 max other:rec
 		self.record_type = struct.unpack('>H',bdata[1:3])[0]&((1<<3)-1) #0:rec 1:no-leaf 2:min 3:max
 		self.next_record = struct.unpack('>h',bdata[3:5])[0] #有符号....
-
-		self.instant = True # fix issue 12
 
 	def __str__(self):
 		return f'deleted:{self.deleted}  min_rec:{self.min_rec}  owned:{self.owned}  heap_no:{self.heap_no}  record_type:{self.record_type}  next_record:{self.next_record}'
