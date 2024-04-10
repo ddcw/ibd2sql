@@ -51,6 +51,8 @@ class record_header(object):
 		self.record_type = struct.unpack('>H',bdata[1:3])[0]&((1<<3)-1) #0:rec 1:no-leaf 2:min 3:max
 		self.next_record = struct.unpack('>h',bdata[3:5])[0] #有符号....
 
+		self.instant = True # fix issue 12
+
 	def __str__(self):
 		return f'deleted:{self.deleted}  min_rec:{self.min_rec}  owned:{self.owned}  heap_no:{self.heap_no}  record_type:{self.record_type}  next_record:{self.next_record}'
 
