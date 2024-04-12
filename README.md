@@ -238,6 +238,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 | v0.2 | 2023.08.30 | 支持更多数据类型               | 1. 修复year/tinyint的支持<br />2. 符号支持(对于数字类型)<br />3. 更多的数据类型支持<br />4. 更多的表属性支持<br />5. 美化输出<br />6. 支持表名替换<br />7. 支持--complete-insert |
 | v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件      | 修复一些BUG                                  |
 | v1.0 | 2024.01.05 | 支持debug<br />支持更多类型和功能 | 1. 支持DEBUG<br />2. 支持分区表<br />3. 支持唯一索引<br />4.支持虚拟列<br />5. 支持instant<br />6.支持约束和外键<br />7. 支持限制输出<br />8.支持前缀索引 |
+| v1.1 | 2024.04.12 | 修复一些bug | 1. 8.0.13 默认值时间戳<br />2. 8.0.12 无hidden<br />3. online ddl instant |
 
 
 
