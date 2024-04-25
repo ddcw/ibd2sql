@@ -46,7 +46,8 @@ def _argparse():
 
 	if parser.parse_args().VERSION:
 		#print("VERSION: v1.0 only for MySQL 8.0")
-		print(f"ibd2sql VERSION: v{__version__} only for MySQL 8.0")
+		#print(f"ibd2sql VERSION: v{__version__} only for MySQL 8.0")
+		print(f"ibd2sql VERSION: v1.2 only for MySQL 8.0")
 		sys.exit(0)
 
 	if parser.parse_args().HELP:
