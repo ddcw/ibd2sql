@@ -87,6 +87,8 @@ class TABLE(object):
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
 			if not col['is_virtual'] and col["default_option"] == "":
 				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
+			if col['srs_id'] > 0:
+				ddl += f" /*!80003 SRID {col['srs_id']} */"
 			else:
 				#虚拟列 VIRTUAL 
 				ddl += f"{' GENERATED ALWAYS AS (' + col['generation_expression'] + ') VIRTUAL' if col['is_virtual'] else '' }"
@@ -245,6 +247,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'generation_expression':col['generation_expression'],
 				'default_option':col['default_option'],
 				'collation_id':col['collation_id'],
+				'srs_id':col['srs_id'],
 				'ct':ct #属于类型
 			}
 		self.table.column = column

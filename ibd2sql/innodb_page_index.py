@@ -156,6 +156,8 @@ class ROW(page):
 				#data = _tdata
 				data = jsonob(_tdata[1:],int.from_bytes(_tdata[:1],'little')).init()
 				data = json.dumps(data)
+			elif col['ct'] == "geom":
+				data = self._read_uint(size)
 			else: #其它lob类型
 				data = self.read(size).decode()
 		elif col['isvar']: #变量

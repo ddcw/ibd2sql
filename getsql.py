@@ -139,11 +139,19 @@ if len(sys.argv) == 1:
 	for x in range(1,300):
 		print(f"insert into ddcw_blob7 values({x},'{get_zh()}{get_en(20,1000)}','{get_zh()}{get_en(20,1000)}','{get_zh()}{get_en(20,100)}','{get_zh()}{get_en(20,100)}','{get_zh()}{get_en(20,100)}','{get_zh()}{get_en(20,100)}','{get_zh()}{get_en(2,10)}','{get_zh()}{get_en(2,10)}');")
 	
+	#geometry
+	print("drop table if exists ddcw_geometry;")
+	dt = """create table if not exists ddcw_geometry(a geometry, b point SRID 4326, c linestring, d polygon, aa geometrycollection, bb multipoint, cc multilinestring, dd multipolygon);"""
+	print(dt)
+	for x in range(1,10):
+		print(f"insert into ddcw_geometry values(ST_GeomFromText('point({x} {x+1})'), ST_GeomFromText('point({x} {x+1})', 4326), ST_GeomFromText('linestring({x} {x}, {x+1} {x+1}, {x+2} {x+2}, {x+1} {x+1})'), ST_GeomFromText('polygon((0 0,0 3,3 3,3 0,0 0),(1 1,1 2,2 2,2 1,1 1))'),  ST_GeomFromText('GeometryCollection(Point(1 1),LineString(2 2, 3 3))'), ST_GeomFromText('MULTIPOINT((60 -24),(28 -77))'),  ST_GeomFromText('MultiLineString((1 1,2 2,3 3),(4 4,5 5))'), ST_GeomFromText('MultiPolygon(((0 0,0 3,3 3,3 0,0 0),(1 1,1 2,2 2,2 1,1 1)))')   );")
+
 else:
 	#print("parse data")
 	t = """
 #解析数据
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --ddl --schema ibd2sql2 > /tmp/testibd2sql_alltype_table.sql
+python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_geometry.ibd --sql --ddl --schema ibd2sql2 > /tmp/testibd2sql_ddcw_geometry.sql
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_instant_new_col.ibd --sql --ddl --schema ibd2sql2 > /tmp/testibd2sql_instant_new_col.sql
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_key#p#p0.ibd   --schema ibd2sql2 --ddl --sql > /tmp/testibd2sql_pt_key.sql
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_key#p#p1.ibd   --schema ibd2sql2 --sql --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_key#p#p0.ibd >> /tmp/testibd2sql_pt_key.sql
@@ -165,6 +173,7 @@ mysql -h127.0.0.1 -P3314 -p123456 -e 'create database ibd2sql2;'
 	
 #导入数据
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_alltype_table.sql
+mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_ddcw_geometry.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_instant_new_col.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_pt_key.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_pt_hash.sql
@@ -181,5 +190,6 @@ mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_key,
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_list, ibd2sql2.ddcw_partition_list;'
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_range, ibd2sql2.ddcw_partition_range;'
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_blob7, ibd2sql2.ddcw_blob7;'
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_geometry, ibd2sql2.ddcw_geometry;'
 	"""
 	print(t)

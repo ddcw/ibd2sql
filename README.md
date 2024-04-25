@@ -18,7 +18,7 @@
 2. **实用**: 可替换库(--schema)/表(--table)名, 可在sql语句中输出完整的字段(--complete)
 3. **简单**: 纯python3代码编写, **无依赖包**.  还可以使用**--debug**查看解析过程
 4. **选择性强**: 可以根据条件过滤符合要求的数据 --where , --limit
-5. **支持众多数据类型**: 支持除 空间坐标 数据类型外的**所有mysql数据类型** (比如 int, decimal, date, varchar, char, **json**, binary, enum, set, blob/text, longblob等).
+5. **支持众多数据类型**: 支持**所有mysql数据类型** (比如 int, decimal, date, varchar, char, **json**, binary, enum, set, blob/text, longblob等).
 6. **支持复杂的表结构**: 分区表, 注释, 主键, 外键, 约束, 自增, 普通索引, 前缀索引, 主键前缀索引, 唯一索引, 复合索引, 默认值, 符号, 虚拟字段, INSTANT, 无主键等情况的表
 7. **数据误删恢复**: 可以输出被标记为deleted的数据
 8. **安全**: 离线解析ibd文件, 仅可读权限即可
@@ -239,6 +239,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 | v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件      | 修复一些BUG                                  |
 | v1.0 | 2024.01.05 | 支持debug<br />支持更多类型和功能 | 1. 支持DEBUG<br />2. 支持分区表<br />3. 支持唯一索引<br />4.支持虚拟列<br />5. 支持instant<br />6.支持约束和外键<br />7. 支持限制输出<br />8.支持前缀索引 |
 | v1.1 | 2024.04.12 | 修复一些bug | 1. 8.0.13 默认值时间戳<br />2. 8.0.12 无hidden<br />3. online ddl instant |
+| v1.2 | 2024.04.25 | 新增空间坐标的支持 | 支持geometry\[collection\],\[multi\]point,\[multi\]linestring,\[multi\]polygon |
 
 
 
@@ -265,8 +266,7 @@ INSERT INTO `ibd2sql`.`ddcw_alltype_table`(`id`,`int_col`,`tinyint_col`,`smallin
 
 1. 二级分区 (不支持)
 2. 溢出页 (默认置为null)
-3. 空间坐标字段
-4. 不支持一张表存在多个字符集, 其实只支持utf8
+3. 不支持一张表存在多个字符集, 其实只支持utf8
 
 
 

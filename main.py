@@ -7,41 +7,9 @@ import argparse
 import sys,os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'ibd2sql/')))
 
-_help = """
---limit 限制行数, 返回指定的行数就退出, 默认-1 表示无限制
---where1  根据字段匹配 比如 --where1="id>1 and id < 10"
---where2  限制TRX范围, 比如 --where2=2,10  #即trx在2(含)到10(含)的事务修改的数据才会输出
---where3  限制rollptr的. 同trx
---force   是否跳过报错的
---set     将set/enum(default) 的int转换为实际表示的字符串. (默认使用逗号隔开)
---ddl     输出信息包含DDL
---deleted 仅输出biao'ji
---debug   调试, 输出的信息较多
---parallel 设置并发数量(默认4)
---debug-filename 调试的输出信息文件, 默认stdout
---multivalue  每页数据使用一个insert
---replace 使用replcae into 替换insert (和multialue冲突)
---replace-table 替换表名(含DDL)
---replcae-schema 替换数据库名
---sdi-table 指定使用该表的sdi作为元数据信息(分区表要)
---sdi-file  指定sdi文件(json)作为元数据信息(可以使用ibd2sdi生成相关信息)
-
---page-min  设置起始页 (方便调试)
---page-max   设置停止页 
---page-count 限制解析的页数量(方便调试)
---page-skip  跳过的page数量 也是方便调试的
-
-"""
-
-stout = """
-输出格式说明:
-int等输出为无引号字符串
-binary输出为base64
-其它均输出为字符串
-"""
-
 def _argparse():
-	parser = argparse.ArgumentParser(add_help=True, description='解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql')
+	parser = argparse.ArgumentParser(add_help=False, description='解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql')
+	parser.add_argument('--help', '-h', action='store_true', dest="HELP", default=False,  help='show help')
 	parser.add_argument('--version', '-v', '-V', action='store_true', dest="VERSION", default=False,  help='show version')
 	parser.add_argument('--ddl', '-d', action='store_true', dest="DDL", default=False,  help='print ddl')
 	parser.add_argument('--sql', action='store_true', dest="SQL", default=False,  help='print data by sql')
@@ -58,7 +26,7 @@ def _argparse():
 	#where条件
 	parser.add_argument('--where-trx', dest="WHERE_TRX", help='default (0,281474976710656)')
 	parser.add_argument('--where-rollptr', dest="WHERE_ROLLPTR", help='default (0,72057594037927936)')
-	parser.add_argument('--where', dest="WHERE", help='filter data(TODO)')
+	#parser.add_argument('--where', dest="WHERE", help='filter data(TODO)')
 	parser.add_argument('--limit', dest="LIMIT", type=int, help='limit rows')
 
 	#DEBUG相关, 方便调试
@@ -71,7 +39,7 @@ def _argparse():
 	parser.add_argument('--page-skip', action='store', type=int, dest="PAGE_SKIP", help='skip some pages when start parse index page')
 
 	#TODO
-	parser.add_argument('--parallel','-p', action='store', dest="PARALLEL", default=4,  help='parse to data/sql with N threads.(default 4) TODO')
+	#parser.add_argument('--parallel','-p', action='store', dest="PARALLEL", default=4,  help='parse to data/sql with N threads.(default 4) TODO')
 
 	#IBD FILE
 	parser.add_argument(dest='FILENAME', help='ibd filename', nargs='?')
@@ -79,6 +47,15 @@ def _argparse():
 	if parser.parse_args().VERSION:
 		#print("VERSION: v1.0 only for MySQL 8.0")
 		print(f"ibd2sql VERSION: v{__version__} only for MySQL 8.0")
+		sys.exit(0)
+
+	if parser.parse_args().HELP:
+		parser.print_help()
+		print("Example:")
+		print("ibd2sql /data/db1/xxx.ibd --ddl --sql")
+		print("ibd2sql /data/db1/xxx.ibd --delete --sql")
+		print("ibd2sql /data/db1/xxx#p#p1.ibd --sdi-table /data/db1/xxx#p#p0.ibd --delete --sql")
+		print("")
 		sys.exit(0)
 
 	return parser.parse_args()

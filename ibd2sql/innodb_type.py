@@ -27,6 +27,7 @@ INNODB_TYPE = {
 	26:'longblob', #longtext
 	27:'blob', #text
 	29:'char', # not binary 虽然和char都是29, 但存储方式不同.... -_-
+	30:'geom', # 坐标之力
 	31:'json'
 }
 
@@ -145,6 +146,9 @@ isvar: isvar?
 		isvar = True #innodb_default_row_format != COMPACT
 	elif ct == "json":
 		size = 20
+		isvar = True
+		isbig = True
+	elif ct == 'geom':
 		isvar = True
 		isbig = True
 

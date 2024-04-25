@@ -299,6 +299,9 @@ class ibd2sql(object):
 				sql  = f"{sql}{data}, "
 			elif (not self.SET) and (self.table.column[colno]['ct'] in ['enum','set']):
 				sql  = f"{sql}{data}, "
+			elif self.table.column[colno]['ct'] == 'geom':
+				extra_srsid = f"{self.table.column[colno]['srs_id']:08x}" if self.table.column[colno]['srs_id'] == 0 else ''
+				sql = f"{sql}0x{extra_srsid}{hex(data)[2:]}, "
 			elif self.table.column[colno]['ct'] == 'binary':
 				sql = f"{sql}{hex(data)}, " #转为16进制, 好看点,但没必要, 就int吧
 			else:
