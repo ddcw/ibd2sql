@@ -1,6 +1,6 @@
 # 介绍
 
-​	**ibd2sql**  是使用python3 编写的 提取**mysql 8.0** innodb存储引擎在磁盘上的 ibd 文件信息为**SQL语句**的工具. 
+​	**ibd2sql**  是使用python3 编写的 提取**mysql 5.7/8.0** innodb存储引擎在磁盘上的 ibd 文件信息为**SQL语句**的工具. 
 
 不需要连接数据库, 只需要对目录ibd文件有可读权限即可. 无第三方依赖包, **纯python3代码**. 使用**GPL-3.0** license.
 
@@ -32,7 +32,7 @@
 
 
 
-# 使用例子
+# 使用例子 (8.0)
 
 可使用 `python3 main.py -h` 查看帮助信息
 
@@ -44,7 +44,7 @@ usage: main.py [--help] [--version] [--ddl] [--sql] [--delete] [--complete-inser
                [--page-max PAGE_MAX] [--page-start PAGE_START] [--page-count PAGE_COUNT] [--page-skip PAGE_SKIP]
                [FILENAME]
 
-解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql
+解析mysql 5.7/8.0的ibd文件 https://github.com/ddcw/ibd2sql
 
 positional arguments:
   FILENAME              ibd filename
@@ -142,6 +142,25 @@ SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd
 
 
 
+# 使用例子(5.7)
+
+`--mysql5` 用来标识这是一个mysql5的ibd文件. 不然就不做解析.
+
+由于5.7的ibd文件没得sdi_page, 得解析frm文件获取元数据信息,  虽然也[解析过frm](https://cloud.tencent.com/developer/article/2409341)结构, 但我懒得去写了. 就直接沿用8.0的sdi吧.   故 解析 5.7的ibd文件 需要先使用 `mysqlfrm`提取出DDL, 并插入到8.0的环境里面, 然后再使用本工具来解析5.7的ibd文件
+
+```shell
+# 提取出DDL 
+mysqlfrm /data/mysql_3308/mysqldata/db1/ddcw_alltype_table.frm --diagnostic 
+
+# 然后导入到8.0环境(以获取SDI信息.)
+....
+
+# 就可以使用本工具解析了
+python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd /data/mysql_3308/mysqldata/db1/ddcw_alltype_table.ibd  --sql --mysql5
+```
+
+
+
 
 
 # CHANGE LOG
@@ -154,6 +173,7 @@ SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd
 | v1.0 | 2024.01.05 | 支持debug<br />支持更多类型和功能 | 1. 支持DEBUG<br />2. 支持分区表<br />3. 支持唯一索引<br />4.支持虚拟列<br />5. 支持instant<br />6.支持约束和外键<br />7. 支持限制输出<br />8.支持前缀索引 |
 | v1.1 | 2024.04.12 | 修复一些bug                | 1. 8.0.13 默认值时间戳<br />2. 8.0.12 无hidden<br />3. online ddl instant |
 | v1.2 | 2024.04.25 | 新增空间坐标的支持              | 支持geometry\[collection\],\[multi\]point,\[multi\]linestring,\[multi\]polygon |
+| v1.3 | 2024.05.11 | 支持mysql 5.7            | 本来准备做二级分区支持的,  但看了下, WC, 太复杂了-_- 那就更新个支持5.7的吧(其实结构和8.0是差不多的) (for issue 7) |
 
 
 
@@ -176,7 +196,7 @@ SHELL> python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd
 
 环境要求:  python3 
 
-对象支持:  mysql 8.x 所有数据类型
+对象支持:  mysql 5.7/8.x 所有数据类型
 
 如下情况不支持:
 

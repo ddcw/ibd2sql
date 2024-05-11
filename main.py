@@ -8,7 +8,7 @@ import sys,os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'ibd2sql/')))
 
 def _argparse():
-	parser = argparse.ArgumentParser(add_help=False, description='解析mysql8.0的ibd文件 https://github.com/ddcw/ibd2sql')
+	parser = argparse.ArgumentParser(add_help=False, description='解析mysql 5.7/8.0的ibd文件 https://github.com/ddcw/ibd2sql')
 	parser.add_argument('--help', '-h', action='store_true', dest="HELP", default=False,  help='show help')
 	parser.add_argument('--version', '-v', '-V', action='store_true', dest="VERSION", default=False,  help='show version')
 	parser.add_argument('--ddl', '-d', action='store_true', dest="DDL", default=False,  help='print ddl')
@@ -38,6 +38,9 @@ def _argparse():
 	parser.add_argument('--page-count', action='store', type=int, dest="PAGE_COUNT", help='page count NO')
 	parser.add_argument('--page-skip', action='store', type=int, dest="PAGE_SKIP", help='skip some pages when start parse index page')
 
+	# for mysql 5.7
+	parser.add_argument('--mysql5', action='store_true', dest="MYSQL5", default=False,  help='for mysql5.7 flag')
+
 	#TODO
 	#parser.add_argument('--parallel','-p', action='store', dest="PARALLEL", default=4,  help='parse to data/sql with N threads.(default 4) TODO')
 
@@ -46,7 +49,7 @@ def _argparse():
 
 	if parser.parse_args().VERSION:
 		#print("VERSION: v1.0 only for MySQL 8.0")
-		print(f"ibd2sql VERSION: v{__version__} only for MySQL 8.0")
+		print(f"ibd2sql VERSION: v{__version__} for MySQL 5.7 or 8.0")
 		sys.exit(0)
 
 	if parser.parse_args().HELP:
@@ -54,7 +57,8 @@ def _argparse():
 		print("Example:")
 		print("ibd2sql /data/db1/xxx.ibd --ddl --sql")
 		print("ibd2sql /data/db1/xxx.ibd --delete --sql")
-		print("ibd2sql /data/db1/xxx#p#p1.ibd --sdi-table /data/db1/xxx#p#p0.ibd --delete --sql")
+		print("ibd2sql /data/db1/xxx#p#p1.ibd --sdi-table /data/db1/xxx#p#p0.ibd --sql")
+		print("ibd2sql /mysql57/db1/xxx.ibd --sdi-table /mysql80/db1/xxx.ibd --sql --mysql5")
 		print("")
 		sys.exit(0)
 
@@ -81,6 +85,8 @@ if __name__ == '__main__':
 		ddcw.DEBUG = True
 	if parser.SDI_TABLE:
 		ddcw.IS_PARTITION = True
+
+	ddcw.MYSQL5 = parser.MYSQL5
 
 	ddcw.COMPLETE_SQL = True if parser.COMPLETE_INSERT else False
 

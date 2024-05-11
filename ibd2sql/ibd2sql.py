@@ -37,6 +37,7 @@ class ibd2sql(object):
 		self.PAGE_START = -1
 		self.PAGE_COUNT = -1
 		self.PAGE_SKIP = -1
+		self.MYSQL5 = False # 标记是否为MYSQL 5.7的, 其实没必要的, 只是我懒得去看以前的shit了... 那就堆shit吧 -_-
 
 
 	def _init_table_name(self):
@@ -91,15 +92,16 @@ class ibd2sql(object):
 		self.PAGE_ID = 0
 
 		#first page
-		self.PAGE_ID = 0
-		self.debug("ANALYZE FIRST PAGE: FIL_PAGE_TYPE_FSP_HDR")
-		self.space_page = xdes(self.read()) #第一页
-		if not self.space_page.fsp_status:
-			sys.stderr.write(f"\nrow_format = compressed or its damaged or its mysql 5.7 file\n\n")
-			sys.exit(2)
-		self.debug("ANALYZE FIRST PAGE FINISH")
-		sdino = self.space_page.SDI_PAGE_NO
-		self.debug("SDI PAGE NO:",sdino)
+		if not self.MYSQL5:
+			self.PAGE_ID = 0
+			self.debug("ANALYZE FIRST PAGE: FIL_PAGE_TYPE_FSP_HDR")
+			self.space_page = xdes(self.read()) #第一页
+			if not self.space_page.fsp_status:
+				sys.stderr.write(f"\nrow_format = compressed or its damaged or its mysql 5.7 file\n\n")
+				sys.exit(2)
+			self.debug("ANALYZE FIRST PAGE FINISH")
+			sdino = self.space_page.SDI_PAGE_NO
+			self.debug("SDI PAGE NO:",sdino)
 
 		#sdi page
 		if self.IS_PARTITION:
@@ -129,12 +131,17 @@ class ibd2sql(object):
 		#inode page
 		self.debug(f'ANALYZE PAGE INODE (PAGE_ID=2) (for get index)')
 		self.PAGE_ID = 2 #inode
-		self.inode = inode(self.read())
-		self.debug("FIRST INDEX (Non-leaf and leaf page) :",self.inode.index_page[0]," (-1 is None)")
-		self.first_no_leaf_page = self.inode.index_page[0][0]
-		self.first_leaf_page = self.inode.index_page[0][1] 
+		if self.MYSQL5:
+			self.first_leaf_page = 2
+		else:
+			self.inode = inode(self.read())
+			self.debug("FIRST INDEX (Non-leaf and leaf page) :",self.inode.index_page[0]," (-1 is None)")
+			self.first_no_leaf_page = self.inode.index_page[0][0]
+			self.first_leaf_page = self.inode.index_page[0][1] 
 		#self.debug("START FIND FIRST LEAF PAGE")
-		if self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or True:
+		if self.MYSQL5:
+			self.first_leaf_page = 4
+		elif self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or True:
 			self.init_first_leaf_page()
 		self.debug("FIRST LEAF PAGE ID:",self.first_leaf_page )
 		self.debug("#############################################################################")
