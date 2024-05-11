@@ -29,7 +29,7 @@
 
 最新版: [https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip](https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip)
 
-次新版: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.2.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.2.tar.gz)
+次新版: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.3.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.3.tar.gz)
 
 
 
