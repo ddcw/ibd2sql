@@ -3,6 +3,7 @@ from ibd2sql.COLLATIONS import COLLID_TO_CHAR
 import struct,json,zlib
 from ibd2sql.innodb_type import innodb_type_isvar
 import base64
+from ibd2sql.partition import subpartition
 
 
 class TABLE(object):
@@ -337,7 +338,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 			pt = f"/*!50100 PARTITION BY HASH ({dd['dd_object']['partition_expression_utf8']})\nPARTITIONS {len(dd['dd_object']['partitions'])} */"
 		else: #不支持其它分区了(就4种: https://dev.mysql.com/doc/refman/8.0/en/partitioning-types.html)
 			pass
-		self.table.partitions = pt
+		#self.table.partitions = pt
+		self.table.partitions = pt if dd['dd_object']['subpartition_type'] == 0 else subpartition(dd['dd_object']) # for subpartition
 
 
 		table_options = {}

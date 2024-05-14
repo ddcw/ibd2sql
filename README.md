@@ -202,9 +202,8 @@ python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_tabl
 
 如下情况不支持:
 
-1. DDL二级分区 (不支持)
-2. 溢出页 (默认置为null)
-3. 不支持一张表存在多个字符集, 其实只支持utf8
+1. 溢出页 (默认置为null)
+2. 不支持一张表存在多个字符集, 其实只支持utf8
 
 
 
