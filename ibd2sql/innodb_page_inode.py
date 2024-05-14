@@ -28,6 +28,7 @@ class inode(page):
 		super().__init__(*args,**kwargs)
 		if self.FIL_PAGE_TYPE != 3:
 			return False
+		self.MYSQL5 = kwargs['MYSQL5']
 		self.page_name = 'INODE'
 		self.EXTRA_PAGE = True #假装还有额外的Inode page
 		self._init_inodeinfo()
@@ -56,7 +57,8 @@ class inode(page):
 			}
 
 	def _init_segment(self):
-		self.FSEG_SDI = (self._segment(),self._segment())
+		if not self.MYSQL5: # fix issue 17   mysql57没得sdi信息, 就不用去掉第一个index了
+			self.FSEG_SDI = (self._segment(),self._segment())
 		self.FSEG = [] #(non_leaf_page, leaf_page)
 		for x in range(85):
 			_fseg = self._segment()

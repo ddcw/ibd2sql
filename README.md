@@ -188,6 +188,7 @@ python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_tabl
 6. [默认值为时间戳](https://github.com/ddcw/ibd2sql/issues/8) : 支持默认值为时间戳, blob等字段的前缀索引
 7. [8.0.12 无hidden](https://github.com/ddcw/ibd2sql/issues/10) : 取消hidden检查
 8. [ONLINE DDL instant](https://github.com/ddcw/ibd2sql/issues/12) : record 1-2 bit is instant flag
+9. [mysql 5.7 解析无数据](https://github.com/ddcw/ibd2sql/issues/17) : mysql 5.7无SDI PAGE, INODE不需要去掉第一个INDEX
 
 
 

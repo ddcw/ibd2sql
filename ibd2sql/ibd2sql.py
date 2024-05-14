@@ -131,17 +131,12 @@ class ibd2sql(object):
 		#inode page
 		self.debug(f'ANALYZE PAGE INODE (PAGE_ID=2) (for get index)')
 		self.PAGE_ID = 2 #inode
-		if self.MYSQL5:
-			self.first_leaf_page = 2
-		else:
-			self.inode = inode(self.read())
-			self.debug("FIRST INDEX (Non-leaf and leaf page) :",self.inode.index_page[0]," (-1 is None)")
-			self.first_no_leaf_page = self.inode.index_page[0][0]
-			self.first_leaf_page = self.inode.index_page[0][1] 
+		self.inode = inode(self.read(),MYSQL5=self.MYSQL5)
+		self.debug("FIRST INDEX (Non-leaf and leaf page) :",self.inode.index_page[0]," (-1 is None)")
+		self.first_no_leaf_page = self.inode.index_page[0][0]
+		self.first_leaf_page = self.inode.index_page[0][1] 
 		#self.debug("START FIND FIRST LEAF PAGE")
-		if self.MYSQL5:
-			self.first_leaf_page = 4
-		elif self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or True:
+		if self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or True:
 			self.init_first_leaf_page()
 		self.debug("FIRST LEAF PAGE ID:",self.first_leaf_page )
 		self.debug("#############################################################################")
