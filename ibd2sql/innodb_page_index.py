@@ -163,15 +163,18 @@ class ROW(page):
 					self.debug(f"BLOB ERROR {e}")
 					data = '0x'+_tdata.hex()
 		elif col['isvar']: #变量
-			size = self._read_innodb_varsize()
-			if size + self.offset > 16384:
-				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
-				self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
-				_tdata = first_blob(self.f,PAGENO)
+			if col['character_set'] == "ascii" and col['ct'] == "char": #不用记录大小, 直接读 issue 9
+				_tdata = self.read(col['size']) 
 			else:
-				_tdata = self.read(size)
+				size = self._read_innodb_varsize()
+				if size + self.offset > 16384:
+					SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
+					self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
+					_tdata = first_blob(self.f,PAGENO)
+				else:
+					_tdata = self.read(size)
 			try:
-				data = _tdata.decode()
+				data = _tdata.decode().rstrip()  # 直接去掉空字符吧
 			except Exception as e:
 				self.debug(f"BLOB ERROR {e}")
 				data = '0x'+_tdata.hex()

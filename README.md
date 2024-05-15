@@ -189,6 +189,7 @@ python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_tabl
 7. [8.0.12 无hidden](https://github.com/ddcw/ibd2sql/issues/10) : 取消hidden检查
 8. [ONLINE DDL instant](https://github.com/ddcw/ibd2sql/issues/12) : record 1-2 bit is instant flag
 9. [mysql 5.7 解析无数据](https://github.com/ddcw/ibd2sql/issues/17) : mysql 5.7无SDI PAGE, INODE不需要去掉第一个INDEX
+10. [char字段为ascii](https://github.com/ddcw/ibd2sql/issues/9) : char字段如果是ascii字符集则不会额外记录字段长度
 
 
 
@@ -196,14 +197,7 @@ python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_tabl
 
 # 支持范围
 
-环境要求:  python3 
-
-对象支持:  mysql 5.7/8.x 所有数据类型
-
-如下情况不支持:
-
-1. 不支持一张表存在多个字符集, 其实只支持utf8
-
+环境要求:  python3
 
 
 

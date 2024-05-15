@@ -174,6 +174,12 @@ if len(sys.argv) == 1:
 
 	# 5.7 不好验证, 算逑.
 
+	# char ascii
+	dt = "create table if not exists ddcw_char_ascii(aa char(255) CHARACTER SET ascii COLLATE ascii_general_ci NOT NULL, bb char(32));"
+	print(dt)
+	for x in range(1,100):
+		print(f"insert into ddcw_char_ascii values('{get_en()}','{get_en(1,32)}');")
+
 else:
 	#print("parse data")
 	t = """
@@ -202,6 +208,7 @@ python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_
 python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p1#sp#p1sp1.ibd >> /tmp/ddcw_subpartition_rangehash.sql
 python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p2#sp#p2sp0.ibd >> /tmp/ddcw_subpartition_rangehash.sql
 python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p2#sp#p2sp1.ibd >> /tmp/ddcw_subpartition_rangehash.sql
+python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_char_ascii.ibd --sql --ddl --schema ibd2sql2 > /tmp/ddcw_char_ascii.sql
 
 #清空环境
 mysql -h127.0.0.1 -P3314 -p123456 -e 'drop database ibd2sql2;'
@@ -219,6 +226,7 @@ mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_blob.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_extrapage_varchar.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_extrapage_blob.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_subpartition_rangehash.sql
+mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_char_ascii.sql
 
 
 #校验数据
@@ -233,5 +241,9 @@ mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_geometry, ibd2
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_extrapage_varchar, ibd2sql2.ddcw_extrapage_varchar;' 2>/dev/null
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_extrapage_blob, ibd2sql2.ddcw_extrapage_blob;' 2>/dev/null
 mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_subpartition_rangehash, ibd2sql2.ddcw_subpartition_rangehash;' 2>/dev/null
+# DDL没加字段字符集和排序规则, TABLE.COLUMN_COLL = False  所以这里就不使用checksum来校验了, 换为groupconcat
+#mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_char_ascii, ibd2sql2.ddcw_char_ascii;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'select sha1(group_concat(concat(aa,bb))) from ibd2sql.ddcw_char_ascii;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'select sha1(group_concat(concat(aa,bb))) from ibd2sql2.ddcw_char_ascii;' 2>/dev/null
 	"""
 	print(t)

@@ -144,6 +144,7 @@ isvar: isvar?
 		isbig = True
 	elif ct == "char":
 		isvar = True #innodb_default_row_format != COMPACT
+		size = int(re.compile('char\((.+)\)').findall(col['column_type_utf8'],)[0]) # issue 9
 	elif ct == "json":
 		size = 20
 		isvar = True
