@@ -146,6 +146,34 @@ if len(sys.argv) == 1:
 	for x in range(1,10):
 		print(f"insert into ddcw_geometry values(ST_GeomFromText('point({x} {x+1})'), ST_GeomFromText('point({x} {x+1})', 4326), ST_GeomFromText('linestring({x} {x}, {x+1} {x+1}, {x+2} {x+2}, {x+1} {x+1})'), ST_GeomFromText('polygon((0 0,0 3,3 3,3 0,0 0),(1 1,1 2,2 2,2 1,1 1))'),  ST_GeomFromText('GeometryCollection(Point(1 1),LineString(2 2, 3 3))'), ST_GeomFromText('MULTIPOINT((60 -24),(28 -77))'),  ST_GeomFromText('MultiLineString((1 1,2 2,3 3),(4 4,5 5))'), ST_GeomFromText('MultiPolygon(((0 0,0 3,3 3,3 0,0 0),(1 1,1 2,2 2,2 1,1 1)))')   );")
 
+	# 溢出页
+	print("drop table if exists ddcw_extrapage_varchar;")
+	print("drop table if exists ddcw_extrapage_blob;")
+	dt1 = """create table if not exists ddcw_extrapage_varchar(id int, aa varchar(16381)); """
+	dt2 = """create table if not exists ddcw_extrapage_blob(id int, aa longblob); """
+	print(dt1)
+	print(dt2)
+	for x in range(1,10):
+		print(f"insert into ddcw_extrapage_varchar values({x},repeat('x', 16380));")
+		print(f"insert into ddcw_extrapage_blob values({x},repeat('x', 65536));")
+
+	# 二级分区
+	dt = """ CREATE TABLE if not exists ddcw_subpartition_rangehash (id INT, purchased DATE)
+    PARTITION BY RANGE( YEAR(purchased) )
+    SUBPARTITION BY HASH( TO_DAYS(purchased) )
+    SUBPARTITIONS 2 (
+        PARTITION p0 VALUES LESS THAN (1990),
+        PARTITION p1 VALUES LESS THAN (2000),
+        PARTITION p2 VALUES LESS THAN MAXVALUE
+    );"""
+	print(dt)
+	for x in range(1,10):
+		print(f"insert into  ddcw_subpartition_rangehash values(1{x},'1988-01-01');")
+		print(f"insert into  ddcw_subpartition_rangehash values(2{x},'1999-01-01');")
+		print(f"insert into  ddcw_subpartition_rangehash values(3{x},'2024-05-15');")
+
+	# 5.7 不好验证, 算逑.
+
 else:
 	#print("parse data")
 	t = """
@@ -166,6 +194,14 @@ python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p1.ibd 
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p2.ibd --schema ibd2sql2 --sql --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p0.ibd >> /tmp/testibd2sql_pt_range.sql
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p3.ibd --schema ibd2sql2 --sql --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p0.ibd >> /tmp/testibd2sql_pt_range.sql
 python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_blob7.ibd --schema ibd2sql2 --sql --ddl > /tmp/testibd2sql_blob.sql
+python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_extrapage_varchar.ibd --sql --ddl --schema ibd2sql2 > /tmp/ddcw_extrapage_varchar.sql
+python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_extrapage_blob.ibd --sql --ddl --schema ibd2sql2 > /tmp/ddcw_extrapage_blob.sql
+python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --ddl --schema ibd2sql2 > /tmp/ddcw_subpartition_rangehash.sql
+python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp1.ibd >> /tmp/ddcw_subpartition_rangehash.sql
+python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p1#sp#p1sp0.ibd >> /tmp/ddcw_subpartition_rangehash.sql
+python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p1#sp#p1sp1.ibd >> /tmp/ddcw_subpartition_rangehash.sql
+python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p2#sp#p2sp0.ibd >> /tmp/ddcw_subpartition_rangehash.sql
+python main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p0#sp#p0sp0.ibd --sql --schema ibd2sql2 /data/mysql_3314/mysqldata/ibd2sql/ddcw_subpartition_rangehash#p#p2#sp#p2sp1.ibd >> /tmp/ddcw_subpartition_rangehash.sql
 
 #清空环境
 mysql -h127.0.0.1 -P3314 -p123456 -e 'drop database ibd2sql2;'
@@ -180,16 +216,22 @@ mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_pt_hash.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_pt_list.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_pt_range.sql
 mysql -h127.0.0.1 -P3314 -p123456 < /tmp/testibd2sql_blob.sql
+mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_extrapage_varchar.sql
+mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_extrapage_blob.sql
+mysql -h127.0.0.1 -P3314 -p123456 < /tmp/ddcw_subpartition_rangehash.sql
 
 
 #校验数据
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_alltype_table, ibd2sql2.ddcw_alltype_table;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_instant_new_col, ibd2sql2.ddcw_instant_new_col;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_hash, ibd2sql2.ddcw_partition_hash;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_key, ibd2sql2.ddcw_partition_key;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_list, ibd2sql2.ddcw_partition_list;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_range, ibd2sql2.ddcw_partition_range;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_blob7, ibd2sql2.ddcw_blob7;'
-mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_geometry, ibd2sql2.ddcw_geometry;'
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_alltype_table, ibd2sql2.ddcw_alltype_table;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_instant_new_col, ibd2sql2.ddcw_instant_new_col;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_hash, ibd2sql2.ddcw_partition_hash;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_key, ibd2sql2.ddcw_partition_key;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_list, ibd2sql2.ddcw_partition_list;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_partition_range, ibd2sql2.ddcw_partition_range;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_blob7, ibd2sql2.ddcw_blob7;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_geometry, ibd2sql2.ddcw_geometry;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_extrapage_varchar, ibd2sql2.ddcw_extrapage_varchar;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_extrapage_blob, ibd2sql2.ddcw_extrapage_blob;' 2>/dev/null
+mysql -h127.0.0.1 -P3314 -p123456 -e 'checksum table ibd2sql.ddcw_subpartition_rangehash, ibd2sql2.ddcw_subpartition_rangehash;' 2>/dev/null
 	"""
 	print(t)

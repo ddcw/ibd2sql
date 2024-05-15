@@ -59,4 +59,3 @@ def subpartition(dd):
 
 		ddl = ddl[:-2] + ")*/"	
 	return ddl
-

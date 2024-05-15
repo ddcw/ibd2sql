@@ -185,7 +185,7 @@ class ibd2sql(object):
 		self.debug("ibd2sql get_sql BEGIN:",self.PAGE_ID,self.PAGE_MIN,self.PAGE_MAX,self.PAGE_COUNT)
 		while self.PAGE_ID > self.PAGE_MIN and self.PAGE_ID <= self.PAGE_MAX and self.PAGE_ID < 4294967295 and self.PAGE_COUNT != 0:
 			self.debug("INIT INDEX OBJECT")
-			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug)
+			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f)
 			aa.DELETED = True if self.DELETE else False
 			aa.pageno = self.PAGE_ID
 			self.debug("SET FILTER",self.WHERE2,self.WHERE3)

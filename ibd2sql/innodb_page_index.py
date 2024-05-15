@@ -1,5 +1,6 @@
 from ibd2sql.innodb_page import *
 from ibd2sql.mysql_json import jsonob
+from ibd2sql.blob import first_blob
 import struct
 import binascii
 import json
@@ -144,24 +145,36 @@ class ROW(page):
 			#data = self.read_innodb_big()
 			size = self._read_innodb_varsize()
 			if size + self.offset > 16384:
-				size = 20 #超过这一页大小了, 就只要20bytes
-				data = self.read(size)
-				real_size = int.from_bytes(data[-4:],'big')
-				self.debug("THIS BIG COLUMN SIZE:",real_size,'bytes  detail:',data)
-				_expage = data
-				data = None
-				
-			elif col['ct'] == "json": #json类型
+				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
+				self.debug(f"SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
+				_tdata = first_blob(self.f,PAGENO)
+			else:
 				_tdata = self.read(size)
-				#data = _tdata
+				
+			if col['ct'] == "json": #json类型
 				data = jsonob(_tdata[1:],int.from_bytes(_tdata[:1],'little')).init()
 				data = json.dumps(data)
 			elif col['ct'] == "geom":
-				data = self._read_uint(size)
-			else: #其它lob类型
-				data = self.read(size).decode()
+				data = int.from_bytes(_tdata,'big',signed=False)
+			else: 
+				try:
+					data = _tdata.decode()
+				except Exception as e:
+					self.debug(f"BLOB ERROR {e}")
+					data = '0x'+_tdata.hex()
 		elif col['isvar']: #变量
-			data = self.read_innodb_varchar(True)
+			size = self._read_innodb_varsize()
+			if size + self.offset > 16384:
+				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
+				self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
+				_tdata = first_blob(self.f,PAGENO)
+			else:
+				_tdata = self.read(size)
+			try:
+				data = _tdata.decode()
+			except Exception as e:
+				self.debug(f"BLOB ERROR {e}")
+				data = '0x'+_tdata.hex()
 		elif col['ct'] in ['int','tinyint','smallint','bigint','mediumint']: #int类型
 			data = self.read_innodb_int(n,is_unsigned)
 		elif col['ct'] == 'float': 
@@ -482,6 +495,7 @@ class index(ROW):
 	def __init__(self,*args,**kwargs):
 		super().__init__(*args,**kwargs)
 		self.table = kwargs['table']  #必须要表对象, 不然解析不了字段信息
+		self.f = kwargs['f']
 		#self.HAS_NULL = self.table.have_null #是否有空值
 		#self.offset += 5 #懒得解析page directory了. 直接走INFIMUM..
 		#self._offset = self.offset
