@@ -8,7 +8,7 @@
 
 ​	[视频介绍](https://www.bilibili.com/video/BV1HK411a7DJ)
 
-​	[旧版README](https://github.com/ddcw/ibd2sql/blob/main/README_OLD.md)
+​	[README_DEV](https://github.com/ddcw/ibd2sql/blob/main/docs/README_DEV.md)
 
 
 
