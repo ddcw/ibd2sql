@@ -163,11 +163,13 @@ INNODB_PAGE(16K)-|---> PAGE_DATA
 		"""
 		读Innodb的 tinyint,smallint,mediumint,int,bigint, year, bit
 		"""
-		_t = self._read_uint(n)
-		#_t = struct.unpack('>L',self.read(n))[0]
-		_s = n*8 - 1
-		return (_t&((1<<_s)-1))-2**_s if _t < 2**_s and not is_unsigned else (_t&((1<<_s)-1))
-
+		if is_unsigned:
+			return self._read_uint(n)
+		else:
+			_t = self._read_uint(n)
+			_s = n*8 - 1
+			return (_t&((1<<_s)-1))-2**_s if _t < 2**_s and not is_unsigned else (_t&((1<<_s)-1))
+	
 	def read_innodb_float(self,n):
 		"""
 		读innodb的 float类型
