@@ -32,6 +32,33 @@ DATA_ROLL_PTR_LEN = 7
 
 REC_N_FIELDS_ONE_BYTE_MAX = 0x7F
 
+class decimal_buff(object):
+	def __init__(self,bdata,forward=False):
+		self.bdata = bdata
+		self.max_size = len(bdata)
+		self.forward = forward
+		self.offset = 0
+		
+	def read(self,):
+		#n = 0
+		if self.max_size - self.offset >= 4:
+			n = 4
+		#elif self.max_size - self.offset >= 2:
+		#	n = 2
+		#elif self.max_size - self.offset > 0:
+		#	n = 1
+		else:
+			n = self.max_size - self.offset
+		if self.forward:
+			data = self.bdata[self.offset:self.offset+n]
+		else:
+			if self.offset == 0:
+				data = self.bdata[-self.offset-n:]
+			else:
+				data = self.bdata[-self.offset-n:-self.offset]
+		self.offset += n
+		return data
+
 def _DEBUG(*args):
 	pass
 
@@ -169,7 +196,7 @@ INNODB_PAGE(16K)-|---> PAGE_DATA
 			_t = self._read_uint(n)
 			_s = n*8 - 1
 			return (_t&((1<<_s)-1))-2**_s if _t < 2**_s and not is_unsigned else (_t&((1<<_s)-1))
-	
+
 	def read_innodb_float(self,n):
 		"""
 		读innodb的 float类型
@@ -194,8 +221,42 @@ Example:
     (10,3) 整数就是4字节,  小数是2字节
 		"""
 		bdata = self.read(n)
+		signed = False if int.from_bytes(bdata[:1],'big')&128 else True
+		#print(bdata,extra)
 		p1 = extra[0] #整数部分字节数
 		p2 = extra[1] #小数部分
+		#fh = True if struct.unpack('B',bdata[:1])[0]&127 else False
+		cc = struct.pack('B',struct.unpack('B',bdata[:1])[0]&127)+bdata[1:p1]
+		t1 = decimal_buff(cc)
+		t1data = []
+		lastbytes1=0
+		while True:
+			data = t1.read()
+			if data == b'':
+				break
+			lastbytes1 = len(data)
+			_data = int.from_bytes(data,'big',signed=signed)
+			_data += 1 if signed else 0
+			t1data.append(_data)
+		t2 = decimal_buff(bdata[p1:],True)
+		t2data = []
+		while True:
+			data = t2.read()
+			if data == b'':
+				break
+			_data = int.from_bytes(data,'big',signed=signed)
+			_data += 1 if signed else 0
+			t2data.append(_data)
+		t1data.reverse()
+		if signed and len(t1data) > 1:
+			t1data[0] = 128-t1data[0]
+		elif signed and len(t1data) == 1:
+			t1data[0] = (t1data[0] ^ (2**(8*lastbytes1-1)-1)) + 1
+		rdata = "".join([ str(x).replace('-','') for x in t1data ]) + "." + "".join([ str(x).replace('-','') for x in t2data ])
+		data = f"{'-' if signed else ''}{rdata}"
+		return data
+
+
 		p1_bdata = bdata[:p1]
 		p2_bdata = bdata[p1:]
 		p1_data = int.from_bytes(p1_bdata,'big',signed=True)
@@ -309,9 +370,9 @@ Example:
 		great0 = True if idata&(1<<23) else False
 		fraction = int.from_bytes(bdata[3:],'big') if len(bdata)>3 else None
 		if fraction is None:
-			return f'{hour}:{minute}:{second}' if great0 else f'-{hour}:{minute}:{second}'
+			return f'{hour}:{minute}:{second}' if great0 else f'-{1024-hour}:{minute}:{second}'
 		else:
-			return f'{hour}:{minute}:{second}.{fraction}' if great0 else f'-{hour}:{minute}:{second}.{fraction}'
+			return f'{hour}:{minute}:{second}.{fraction}' if great0 else f'-{1024-hour}:{minute}:{second}.{fraction}'
 
 	def read_innodb_date(self,n):
 		"""
