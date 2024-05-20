@@ -4,7 +4,7 @@
 
 # 参数:
 # 原始数据库, 即需要测试的数据库
-MYSQLBIN1="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
+MYSQLBIN1="mysql -h127.0.0.1 -P3308 -p123456 -uroot"
 MYSQLDB1="ibd2sql_t1"
 SERVER="root:123456@127.0.0.1:3308" #不知道字符集, 就没法生成表结构... 
 
@@ -102,16 +102,26 @@ test1(){
 	# 判断是否为分区表.
 	ISPARTITION=false
 	FIRSTPARITION_NAME=""
-	if [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#p#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+	mysqlflag="p"
+	if $ISMYSQL5;then
+		mysqlflag="P"
+	fi
+	if [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
 		ISPARTITION=true
-		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#p#*.ibd`;do
+		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd`;do
 			${comm} --ddl ${filename} >/dev/null 2>&1 && FIRSTPARITION_NAME=${filename##*/}
 		done
 	fi
 	
 	if $ISMYSQL5;then
-		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB3}\`/" | ${MYSQLBIN3} -NB -D${MYSQLDB3} >/dev/null 2>&1
-		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB2}\`/" | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB3}\`/" | sed 's/, DEFAULT CHARSET=utf8//g' | ${MYSQLBIN3} -NB -D${MYSQLDB3} >/dev/null 2>&1
+		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB2}\`/" | sed 's/, DEFAULT CHARSET=utf8//g' | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+		if [ `ls ${DATADIR3}/${MYSQLDB3}/${name}#p#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+			ISPARTITION=true
+			for filename in `ls ${DATADIR3}/${MYSQLDB3}/${name}#p#*.ibd`;do
+				${comm} --ddl ${filename} >/dev/null 2>&1 && FIRSTPARITION_NAME=${filename##*/}
+			done
+		fi
 		if ${ISPARTITION};then
 			comm="${comm} --mysql5 --sdi-table ${DATADIR3}/${MYSQLDB3}/${FIRSTPARITION_NAME}"
 		else
@@ -129,7 +139,7 @@ test1(){
 
 	# 解析数据
 	if ${ISPARTITION};then
-		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#p#*.ibd`;do
+		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd`;do
 			${comm} --sql ${filename} --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 		done
 	else
@@ -181,18 +191,6 @@ test_varchar(){
 	#test1 ddcw_test_varchar_500
 	add_crc32 ddcw_test_varchar_500
 
-	# varchar_extra
-	RUNSQL1 "drop table if exists ddcw_test_varchar_16380;"
-	RUNSQL1 "create table if not exists ddcw_test_varchar_16380(id int , aa varchar(16380));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(1,repeat('x', 127));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(2,repeat('x', 255));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(3,repeat('x', 499));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(4,repeat('x', 500));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(4,repeat('x', 16380));"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(5,null);"
-	RUNSQL1 "insert into ddcw_test_varchar_16380 values(6,'');"
-	#test1 ddcw_test_varchar_16380
-	add_crc32 ddcw_test_varchar_16380
 
 	# char
 	RUNSQL1 "drop table if exists ddcw_test_char;"
@@ -204,24 +202,6 @@ test_varchar(){
 	RUNSQL1 "insert into ddcw_test_char values(5,'null',null)"
 	RUNSQL1 "insert into ddcw_test_char values(6,'','')"
 	add_crc32 ddcw_test_char
-
-	# binary
-	RUNSQL1 "drop table if exists ddcw_test_binary;"
-	RUNSQL1 "create table if not exists ddcw_test_binary(id int, aa binary(255))"
-	RUNSQL1 "insert into ddcw_test_binary values(1,repeat('x', 127))"
-	RUNSQL1 "insert into ddcw_test_binary values(2,repeat('x', 255))"
-	RUNSQL1 "insert into ddcw_test_binary values(3,null)"
-	RUNSQL1 "insert into ddcw_test_binary values(4,'')"
-	add_crc32 ddcw_test_binary
-
-	# varbinary
-	RUNSQL1 "drop table if exists ddcw_test_varbinary;"
-	RUNSQL1 "create table if not exists ddcw_test_varbinary(id int, aa varbinary(16000))"
-	RUNSQL1 "insert into ddcw_test_varbinary values(1,repeat('x', 127))"
-	RUNSQL1 "insert into ddcw_test_varbinary values(2,repeat('x', 16000))"
-	RUNSQL1 "insert into ddcw_test_varbinary values(3,null)"
-	RUNSQL1 "insert into ddcw_test_varbinary values(4,'')"
-	add_crc32 ddcw_test_varbinary
 
 	# set
 	RUNSQL1 "drop table if exists ddcw_test_set;"
@@ -242,6 +222,43 @@ test_varchar(){
 	RUNSQL1 "insert into  ddcw_test_enum values(3,'')"
 	add_crc32 ddcw_test_enum
 
+
+	# 8.0
+	if ${ISMYSQL5};then
+		echo "This is not MYSQL 8.x, skip binary/bigvarchar/blob/json/geom"
+		return 0
+	fi
+
+	# binary
+	RUNSQL1 "drop table if exists ddcw_test_binary;"
+	RUNSQL1 "create table if not exists ddcw_test_binary(id int, aa binary(255))"
+	RUNSQL1 "insert into ddcw_test_binary values(1,repeat('x', 127))"
+	RUNSQL1 "insert into ddcw_test_binary values(2,repeat('x', 255))"
+	RUNSQL1 "insert into ddcw_test_binary values(3,null)"
+	RUNSQL1 "insert into ddcw_test_binary values(4,'')"
+	add_crc32 ddcw_test_binary
+
+	# varbinary
+	RUNSQL1 "drop table if exists ddcw_test_varbinary;"
+	RUNSQL1 "create table if not exists ddcw_test_varbinary(id int, aa varbinary(16000))"
+	RUNSQL1 "insert into ddcw_test_varbinary values(1,repeat('x', 127))"
+	RUNSQL1 "insert into ddcw_test_varbinary values(2,repeat('x', 16000))"
+	RUNSQL1 "insert into ddcw_test_varbinary values(3,null)"
+	RUNSQL1 "insert into ddcw_test_varbinary values(4,'')"
+	add_crc32 ddcw_test_varbinary
+
+	# varchar_extra
+	RUNSQL1 "drop table if exists ddcw_test_varchar_16380;"
+	RUNSQL1 "create table if not exists ddcw_test_varchar_16380(id int , aa varchar(16380));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(1,repeat('x', 127));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(2,repeat('x', 255));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(3,repeat('x', 499));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(4,repeat('x', 500));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(4,repeat('x', 16380));"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(5,null);"
+	RUNSQL1 "insert into ddcw_test_varchar_16380 values(6,'');"
+	add_crc32 ddcw_test_varchar_16380
+
 	# blob/text
 	RUNSQL1 "drop table if exists ddcw_test_lob;"
 	RUNSQL1 "create table if not exists ddcw_test_lob(id int, aa blob, bb longblob)"
@@ -250,11 +267,6 @@ test_varchar(){
 	RUNSQL1 "insert into ddcw_test_lob values(3,repeat('x', 32768),repeat('x', 1048576))"
 	add_crc32 ddcw_test_lob
 
-	# 8.0
-	if ${ISMYSQL5};then
-		echo "This is not MYSQL 8.x, skip json/geom"
-		return 0
-	fi
 	# json
 	RUNSQL1 "drop table if exists ddcw_test_json;"
 	RUNSQL1 "create table if not exists ddcw_test_json(id int, aa json)"
@@ -498,10 +510,11 @@ test_partition(){
 
 	#key
 	RUNSQL1 "drop table if exists ddcw_test_p_key"
-	RUNSQL1 "create table if not exists ddcw_test_p_key(id int, aa varchar(200)) PARTITION BY KEY() PARTITIONS 2;"
+	RUNSQL1 "create table if not exists ddcw_test_p_key(id int primary key, aa varchar(200)) PARTITION BY KEY() PARTITIONS 2;"
 	for i in {1..100};do
 		RUNSQL1 "insert into ddcw_test_p_key values(${i},'https://github.com/ddcw/ibd2sql')"
 	done
+	add_crc32 ddcw_test_p_key
 
 	# subpartition
 	RUNSQL1 "drop table if exists ddcw_test_sp_rangehash"
