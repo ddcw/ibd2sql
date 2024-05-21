@@ -429,7 +429,7 @@ class ROW(page):
 				self.debug(f'READ THE REST OF FILED (INSTANT) (column count:{col_count})')
 				col_count -= 1
 
-				if col_count + _icc  < 1 and not self.haveindex: #记录的字段取完了, 剩余的就是默认值
+				if self.table.mysqld_version_id <= 80028 and (col_count + _icc  < 1 and not self.haveindex): #记录的字段取完了, 剩余的就是默认值
 					self.debug(f"\t NO MORE RECORD FILED, COL({colno})({col['name']}) WILL USE DEFAULT VALUE.{col['default']}")
 					#_data[colno],_expage[colno] = None if col['instant_null']  else col['default'],None
 					_data[colno],_expage[colno] = col['instant_value'],None
