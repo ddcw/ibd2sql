@@ -22,6 +22,34 @@ sh test.sh
 
 
 
+# 测试结果汇总
+
+版本太多了, 就选部分版本做测试.
+
+| 版本           | 是否支持 | 备注                                       |
+| ------------ | ---- | ---------------------------------------- |
+| mysql-5.6.51 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度,ENUM解析失败 |
+| mysql-5.7.17 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-5.7.27 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-5.7.35 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-5.7.38 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-5.7.41 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-5.7.44 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度   |
+| mysql-8.0.12 | 是    | 不支持子分区(没得元数据信息)                          |
+| mysql-8.0.13 | 是    | 不支持子分区(没得元数据信息)                          |
+| mysql-8.0.16 | 是    | 不支持子分区(没得元数据信息)                          |
+| mysql-8.0.18 | 是    | 不支持子分区(没得元数据信息)                          |
+| mysql-8.0.22 | 是    |                                          |
+| mysql-8.0.24 | 是    |                                          |
+| mysql-8.0.26 | 是    |                                          |
+| mysql-8.0.28 | 是    |                                          |
+| mysql-8.0.30 | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.0.32 | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.0.33 | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.0.36 | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.0.37 | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.4.0  | 是    | ONLINE DDL(instant)不完全支持                 |
+
 
 
 # 测试结果
@@ -72,6 +100,43 @@ NO 	DESCRIPTION         	CHECKSUM1 	CHECKSUM2 	STATUS
 
 
 
+## 5.6 测试结果
+
+不支持5.6的enum数据类型.
+
+对于datetime,time,timestamp数据类型测试失败, 也是精度丢失问题.
+
+`5.6.51`测试结果如下
+
+| NO   | DESCRIPTION            | CHECKSUM1  | CHECKSUM2  | STATUS |
+| ---- | ---------------------- | ---------- | ---------- | ------ |
+| 1    | ddcw_test_varchar_500  | 2800928485 | 2800928485 | PASS   |
+| 2    | ddcw_test_char         | 801404664  | 801404664  | PASS   |
+| 3    | ddcw_test_set          | 2800683776 | 2800683776 | PASS   |
+| 4    | ddcw_test_enum         | 87634152   | 0          | FAILD  |
+| 5    | ddcw_test_tinyint      | 802451637  | 802451637  | PASS   |
+| 6    | ddcw_test_smallint     | 4262932541 | 4262932541 | PASS   |
+| 7    | ddcw_test_mediumint    | 1186843781 | 1186843781 | PASS   |
+| 8    | ddcw_test_int          | 2842470026 | 2842470026 | PASS   |
+| 9    | ddcw_test_bigint       | 959135233  | 959135233  | PASS   |
+| 10   | ddcw_test_float        | 3281838162 | 3281838162 | PASS   |
+| 11   | ddcw_test_double       | 2975077222 | 2975077222 | PASS   |
+| 12   | ddcw_test_decimal      | 1288315504 | 1288315504 | PASS   |
+| 13   | ddcw_test_year         | 992146600  | 992146600  | PASS   |
+| 14   | ddcw_test_date         | 494130839  | 494130839  | PASS   |
+| 15   | ddcw_test_datetime     | 689894592  | 439434718  | FAILD  |
+| 16   | ddcw_test_time         | 1109272829 | 2806176593 | FAILD  |
+| 17   | ddcw_test_timestamp    | 3456636701 | 2875489858 | FAILD  |
+| 18   | ddcw_test_add_col      | 1616405144 | 1616405144 | PASS   |
+| 19   | ddcw_test_p_range      | 3563129834 | 3563129834 | PASS   |
+| 20   | ddcw_test_p_hash       | 2362191188 | 2362191188 | PASS   |
+| 21   | ddcw_test_p_list       | 1975214345 | 1975214345 | PASS   |
+| 22   | ddcw_test_p_key        | 237814889  | 237814889  | PASS   |
+| 23   | ddcw_test_sp_rangehash | 3784909504 | 3784909504 | PASS   |
+| 24   | ddcw_test_ascii        | 3965747881 | 3965747881 | PASS   |
+
+
+
 ## 5.7 测试结果
 
 对于datetime,time,timestamp数据类型测试失败(测试版本: `5.7.38-log`)
@@ -108,6 +173,8 @@ NO 	DESCRIPTION         	CHECKSUM1 	CHECKSUM2 	STATUS
 
 
 ## 8.0 测试结果
+
+8.0.12  8.0.13  8.0.16  8.0.18 不支持子分区 (没找到元数据信息. 不在ibd里面, 也没得frm文件)
 
 `8.0.28`测试结果如下:
 

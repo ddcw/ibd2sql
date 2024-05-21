@@ -106,6 +106,9 @@ test1(){
 	if $ISMYSQL5;then
 		mysqlflag="P"
 	fi
+	if [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#P#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+		mysqlflag="P"
+	fi
 	if [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
 		ISPARTITION=true
 		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd`;do
@@ -114,11 +117,12 @@ test1(){
 	fi
 	
 	if $ISMYSQL5;then
+		mysqlflag="P"
 		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB3}\`/" | sed 's/, DEFAULT CHARSET=utf8//g' | ${MYSQLBIN3} -NB -D${MYSQLDB3} >/dev/null 2>&1
 		mysqlfrm --server=${SERVER} --diagnostic ${DATADIR1}/${MYSQLDB1}/${name}.frm 2>/dev/null |grep -v '^WARNING: ' | grep -v '^#' | sed "s/\`${MYSQLDB1}\`/\`${MYSQLDB2}\`/" | sed 's/, DEFAULT CHARSET=utf8//g' | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
-		if [ `ls ${DATADIR3}/${MYSQLDB3}/${name}#p#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+		if [ `ls ${DATADIR3}/${MYSQLDB3}/${name}#${mysqlflag}#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
 			ISPARTITION=true
-			for filename in `ls ${DATADIR3}/${MYSQLDB3}/${name}#p#*.ibd`;do
+			for filename in `ls ${DATADIR3}/${MYSQLDB3}/${name}#${mysqlflag}#*.ibd`;do
 				${comm} --ddl ${filename} >/dev/null 2>&1 && FIRSTPARITION_NAME=${filename##*/}
 			done
 		fi
@@ -139,6 +143,11 @@ test1(){
 
 	# 解析数据
 	if ${ISPARTITION};then
+		if [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#p#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+			mysqlflag="p"
+		elif [ `ls ${DATADIR1}/${MYSQLDB1}/${name}#P#*.ibd 2>/dev/null | wc -l` -gt 0 ];then
+			mysqlflag="P"
+		fi
 		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd`;do
 			${comm} --sql ${filename} --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 		done
