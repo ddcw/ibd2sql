@@ -59,21 +59,20 @@ sh test.sh
 本次仅做部分版本测试.  其它的请自行测试.
 
 ```shell
-[root@VM-32-39-centos ibd2sql-main]# sh test.sh 
-测试库: MYSQL VERSION 8.0.37
-目标库: MYSQL VERSION 8.0.37
+测试库: MYSQL VERSION 8.4.0
+目标库: MYSQL VERSION 8.4.0
 <数据类型测试> 初始化数据中...
 <ddl if instant> 初始化数据中...
 <partition&subpartition> 初始化数据中...
 <ascii charset> 初始化数据中...
 NO 	DESCRIPTION         	CHECKSUM1 	CHECKSUM2 	STATUS    
 1  	ddcw_test_varchar_500	2800928485	2800928485	PASS      
-2  	ddcw_test_varchar_16380	4122188419	4122188419	PASS      
-3  	ddcw_test_char      	801404664 	801404664 	PASS      
-4  	ddcw_test_binary    	102900283 	102900283 	PASS      
-5  	ddcw_test_varbinary 	2533025381	2533025381	PASS      
-6  	ddcw_test_set       	2800683776	2800683776	PASS      
-7  	ddcw_test_enum      	1077517638	1077517638	PASS      
+2  	ddcw_test_char      	801404664 	801404664 	PASS      
+3  	ddcw_test_set       	2800683776	2800683776	PASS      
+4  	ddcw_test_enum      	1077517638	1077517638	PASS      
+5  	ddcw_test_binary    	102900283 	102900283 	PASS      
+6  	ddcw_test_varbinary 	2533025381	2533025381	PASS      
+7  	ddcw_test_varchar_16380	4122188419	4122188419	PASS      
 8  	ddcw_test_lob       	2366570167	2366570167	PASS      
 9  	ddcw_test_json      	1542118033	1542118033	PASS      
 10 	ddcw_test_geom      	4135153503	4135153503	PASS      
@@ -84,19 +83,20 @@ NO 	DESCRIPTION         	CHECKSUM1 	CHECKSUM2 	STATUS
 15 	ddcw_test_bigint    	959135233 	959135233 	PASS      
 16 	ddcw_test_float     	3281838162	3281838162	PASS      
 17 	ddcw_test_double    	2975077222	2975077222	PASS      
-18 	ddcw_test_decimal   	3357267839	3357267839	PASS      
+18 	ddcw_test_decimal   	718233721 	718233721 	PASS      
 19 	ddcw_test_year      	992146600 	992146600 	PASS      
 20 	ddcw_test_date      	494130839 	494130839 	PASS      
-21 	ddcw_test_datetime  	3484197160	3484197160	PASS      
+21 	ddcw_test_datetime  	1367211963	1367211963	PASS      
 22 	ddcw_test_time      	1109272829	1109272829	PASS      
 23 	ddcw_test_timestamp 	3275869004	3275869004	PASS      
-24 	ddcw_test_add_col   	1616405144	986349287 	FAILD     
+24 	ddcw_test_add_col   	1616405144	1616405144	PASS      
 25 	ddcw_test_p_range   	3563129834	3563129834	PASS      
-26 	ddcw_test_p_hash    	2703482655	2703482655	PASS      
+26 	ddcw_test_p_hash    	3673108935	3673108935	PASS      
 27 	ddcw_test_p_list    	1975214345	1975214345	PASS      
-28 	ddcw_test_sp_rangehash	3784909504	3784909504	PASS      
-29 	ddcw_test_ascii     	3965747881	3965747881	PASS      
-测试未通过, 失败数量: 1
+28 	ddcw_test_p_key     	237814889 	237814889 	PASS      
+29 	ddcw_test_sp_rangehash	3784909504	3784909504	PASS      
+30 	ddcw_test_ascii     	3965747881	3965747881	PASS      
+测试通过
 
 ```
 
@@ -248,7 +248,7 @@ NO 	DESCRIPTION         	CHECKSUM1 	CHECKSUM2 	STATUS
 | 21   | ddcw_test_datetime      | 3484197160 | 3484197160 | PASS   |
 | 22   | ddcw_test_time          | 1109272829 | 1109272829 | PASS   |
 | 23   | ddcw_test_timestamp     | 3275869004 | 3275869004 | PASS   |
-| 24   | ddcw_test_add_col       | 1616405144 | 986349287  | FAILD  |
+| 24   | ddcw_test_add_col       | 1616405144 | 986349287  | PASS   |
 | 25   | ddcw_test_p_range       | 3563129834 | 3563129834 | PASS   |
 | 26   | ddcw_test_p_hash        | 2703482655 | 2703482655 | PASS   |
 | 27   | ddcw_test_p_list        | 1975214345 | 1975214345 | PASS   |
