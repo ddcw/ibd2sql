@@ -26,6 +26,8 @@ sh test.sh
 
 版本太多了, 就选部分版本做测试.
 
+理论上8.0的都支持了, 但有几个小版本的instant场景未测(环境清除了)
+
 | 版本           | 是否支持 | 备注                                       |
 | ------------ | ---- | ---------------------------------------- |
 | mysql-5.6.51 | 是    | mysqlfrm解析datetime,time,timestamp会丢失精度,ENUM解析失败 |
@@ -43,12 +45,12 @@ sh test.sh
 | mysql-8.0.24 | 是    |                                          |
 | mysql-8.0.26 | 是    |                                          |
 | mysql-8.0.28 | 是    |                                          |
-| mysql-8.0.30 | 是    | ONLINE DDL(instant)不完全支持                 |
-| mysql-8.0.32 | 是    | ONLINE DDL(instant)不完全支持                 |
-| mysql-8.0.33 | 是    | ONLINE DDL(instant)不完全支持                 |
-| mysql-8.0.36 | 是    | ONLINE DDL(instant)不完全支持                 |
-| mysql-8.0.37 | 是    | ONLINE DDL(instant)不完全支持                 |
-| mysql-8.4.0  | 是    | ONLINE DDL(instant)不完全支持                 |
+| mysql-8.0.30 | 是    | 待测instant ddl                |
+| mysql-8.0.32 | 是    | 待测instant ddl                 |
+| mysql-8.0.33 | 是    | 待测instant ddl                 |
+| mysql-8.0.36 | 是    |                  |
+| mysql-8.0.37 | 是    | 待测instant ddl                 |
+| mysql-8.4.0  | 是    |                  |
 
 
 
