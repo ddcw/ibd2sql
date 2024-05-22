@@ -45,11 +45,11 @@ sh test.sh
 | mysql-8.0.24 | 是    |                                          |
 | mysql-8.0.26 | 是    |                                          |
 | mysql-8.0.28 | 是    |                                          |
-| mysql-8.0.30 | 是    | 待测instant ddl                |
-| mysql-8.0.32 | 是    | 待测instant ddl                 |
-| mysql-8.0.33 | 是    | 待测instant ddl                 |
+| mysql-8.0.30 | 是    |                  |
+| mysql-8.0.32 | 是    |                  |
+| mysql-8.0.33 | 是    |                  |
 | mysql-8.0.36 | 是    |                  |
-| mysql-8.0.37 | 是    | 待测instant ddl                 |
+| mysql-8.0.37 | 是    |                  |
 | mysql-8.4.0  | 是    |                  |
 
 
