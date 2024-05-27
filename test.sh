@@ -4,9 +4,9 @@
 
 # 参数:
 # 原始数据库, 即需要测试的数据库
-MYSQLBIN1="mysql -h127.0.0.1 -P3308 -p123456 -uroot"
+MYSQLBIN1="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
 MYSQLDB1="ibd2sql_t1"
-SERVER="root:123456@127.0.0.1:3308" #不知道字符集, 就没法生成表结构... 
+SERVER="root:123456@127.0.0.1:3366" #不知道字符集, 就没法生成表结构... 
 
 # 目标数据库, 即解析后的数据存放目录
 MYSQLBIN2="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
@@ -559,6 +559,16 @@ test_default_date(){
 	RUNSQL1 "create table if not exists ddcw_test_default_time (id int, aa datetime)"
 }
 
+test_hidden_drop_col(){
+	RUNSQL1 "drop table if exists ddcw_test_drop_col;"
+	RUNSQL1 "create table if not exists ddcw_test_drop_col (id int, aa varchar(20))"
+	for i in {1..100};do
+		RUNSQL1 "insert into ddcw_test_drop_col values(${i},'ddcw')"
+	done
+	RUNSQL1 "/*!80030 set session sql_generate_invisible_primary_key=ON*/; alter table ddcw_test_drop_col drop column aa;"
+	add_crc32 ddcw_test_drop_col
+}
+
 echo "<数据类型测试> 初始化数据中..."
 test_varchar
 test_int #含double, float, decimal
@@ -572,6 +582,7 @@ echo "<ascii charset> 初始化数据中..."
 test_ascii
 #echo "<default date> 初始化数据中..."
 #test_default_date
+test_hidden_drop_col
 
 RUNSQL1 "flush tables;" 
 sleep 3

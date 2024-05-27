@@ -181,6 +181,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		for col in dd['dd_object']['columns']:
 			if col['name'] in ['DB_TRX_ID','DB_ROLL_PTR','DB_ROW_ID']:
 				continue
+			if col['name'][:17] == '!hidden!_dropped_':
+				continue # issue 19  被删除的字段就不要了
 			#if col['name'] == 'DB_ROW_ID':
 			#	self.table.pk = False
 			coll_id = col['collation_id']
