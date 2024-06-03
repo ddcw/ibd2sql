@@ -11,6 +11,8 @@ def first_blob(f,pageno): # 这名字取得... 简单点吧
 	entry = data[96:96+60]
 	rdata = b''
 	while True:
+		if len(entry) < 12:
+			break
 		pageno,datalen,lobversion = struct.unpack('>3L',entry[-12:])
 		datalen = datalen>>16
 		if pageno == 0:
