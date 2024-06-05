@@ -113,7 +113,7 @@ class TABLE(object):
 			idx = self.index[idxid]
 			ddl += idx['idx_type'] + "KEY "
 			ddl += f"`{idx['name']}` " if idx['name'] else ' '
-			ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`{'' if x[1] == 0 else '('+str(x[1])+')'}" for x in idx['element_col'] ] )   + ")"
+			ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`{'' if x[1] == 0 else '('+str(x[1])+')'} {'DESC' if x[2] == 3 else ''}" for x in idx['element_col'] ] )   + ")"
 			#ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`" for x in idx['element_col'] ] )   + ")" #不考虑前缀索引
 			ddl += " COMMENT " + repr(idx['comment']) if idx['comment'] != "" else ''
 			ddl += ",\n"
@@ -181,7 +181,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		for col in dd['dd_object']['columns']:
 			if col['name'] in ['DB_TRX_ID','DB_ROLL_PTR','DB_ROW_ID']:
 				continue
-			if col['name'][:17] == '!hidden!_dropped_':
+			if col['name'][:17] == '!hidden!_dropped_': #"options": "gipk=1;interval_count=0;"
 				continue # issue 19  被删除的字段就不要了
 			#if col['name'] == 'DB_ROW_ID':
 			#	self.table.pk = False
@@ -274,7 +274,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 					_varlen = 4 if self.table.column[x['column_opx']+1]['collation_id'] == 255 else 3 if self.table.column[x['column_opx']+1]['ct'] in ['varchar','char','varbinary'] and self.table.column[x['column_opx']+1]['type'][:4] != "varb" else 1
 					if self.table.column[x['column_opx']+1]['char_length'] > x['length']:
 						prefix_key = int(x['length']/_varlen)
-				element_col.append((x['column_opx']+1,prefix_key))
+				xorder = x['order'] if 'order' in x else 0
+				element_col.append((x['column_opx']+1,prefix_key,xorder)) # order 是否为降序索引 
 				#/*column[ordinal_position] 从1开始计数,   idx['column_opx'] 从0开始计*/
 			if len(element_col) == 0:
 				continue #没得k

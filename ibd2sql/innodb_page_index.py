@@ -348,7 +348,7 @@ class ROW(page):
 			#读索引
 			self.debug("READ KEY FILED")
 			if self.haveindex: #有索引的时候
-				for colno,prefix_key in self.table.index[self.idxno]['element_col']:
+				for colno,prefix_key,order in self.table.index[self.idxno]['element_col']:
 					col = self.table.column[colno]
 					self.debug(f"\tREAD KEY COLNO:{colno} NAME:{col['name']}")
 
@@ -536,7 +536,7 @@ class find_leafpage(ROW):
 				if self.null_bitmask_len > 0:
 					null_bitmask = self._readreverse_uint(self.null_bitmask_len)
 				if self.haveindex:
-					for colno,prefix_key in self.table.index[self.idxno]['element_col']:
+					for colno,prefix_key,order in self.table.index[self.idxno]['element_col']:
 						col = self.table.column[colno]
 						_,__ = self._read_field(col)
 				else:
