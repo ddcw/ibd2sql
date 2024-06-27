@@ -45,8 +45,10 @@ python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql 
 
 **Windows**
 
+注意python名字和路径
+
 ```shell
-python main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --ddl
+python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 ```
 
 更多使用方法或者5.7环境请看:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
