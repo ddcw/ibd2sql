@@ -37,6 +37,8 @@ cd ibd2sql-main
 
 ## 使用
 
+WIN/Linux用法完全一样
+
 ```shell
 python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --ddl
 ```
