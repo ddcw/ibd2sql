@@ -67,6 +67,7 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 | v1.2 | 2024.04.25 | 新增空间坐标的支持         |
 | v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7  |
 | v1.4 | 2024.05.21 | 支持溢出页, 子分区        |
+| v1.5 | TODO | vector and instant BUG        |
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

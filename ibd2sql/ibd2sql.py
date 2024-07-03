@@ -297,7 +297,7 @@ class ibd2sql(object):
 			data = row[colno]
 			if data is None:
 				sql  = f"{sql}NULL, "
-			elif self.table.column[colno]['ct'] in ['tinyint','smallint','int','float','double','bigint','mediumint','year','decimal',] :
+			elif self.table.column[colno]['ct'] in ['tinyint','smallint','int','float','double','bigint','mediumint','year','decimal','vector'] :
 				sql  = f"{sql}{data}, "
 			elif (not self.SET) and (self.table.column[colno]['ct'] in ['enum','set']):
 				sql  = f"{sql}{data}, "
