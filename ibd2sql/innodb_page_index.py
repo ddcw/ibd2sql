@@ -156,6 +156,8 @@ class ROW(page):
 				data = json.dumps(data)
 			elif col['ct'] == "geom":
 				data = int.from_bytes(_tdata,'big',signed=False)
+			elif col['ct'] == "vector":
+				data = '0x'+_tdata.hex()
 			else: 
 				try:
 					data = _tdata.decode()
