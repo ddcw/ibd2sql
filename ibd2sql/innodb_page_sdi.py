@@ -81,6 +81,8 @@ class TABLE(object):
 	def _column(self):
 		ddl = ""
 		for colid in self.column:
+			if self.column[colid]['version_dropped'] > 0:
+				continue
 			ddl += self._ci
 			col = self.column[colid]
 			ddl += f"`{col['name']}` {col['type']}" #column name
@@ -181,8 +183,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		for col in dd['dd_object']['columns']:
 			if col['name'] in ['DB_TRX_ID','DB_ROLL_PTR','DB_ROW_ID']:
 				continue
-			if col['name'][:17] == '!hidden!_dropped_': #"options": "gipk=1;interval_count=0;"
-				continue # issue 19  被删除的字段就不要了
+			#if col['name'][:17] == '!hidden!_dropped_': #"options": "gipk=1;interval_count=0;"
+			#	continue # issue 19  被删除的字段就不要了
 			#if col['name'] == 'DB_ROW_ID':
 			#	self.table.pk = False
 			coll_id = col['collation_id']
@@ -212,6 +214,10 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				self.table.instant = True
 				self.table.instant_list.append(col['ordinal_position'])
 				instant_null = False
+
+			physical_pos = int(se_private_data['physical_pos']) if 'physical_pos' in se_private_data else col['ordinal_position']
+			version_dropped = int(se_private_data['version_dropped']) if 'version_dropped' in se_private_data else 0
+			version_added = int(se_private_data['version_added']) if 'version_added' in se_private_data else 0
 
 			#NULLABLE
 			if col['is_nullable']  and not col_instant: #instant的不需要使用null bitmask. 因为本来就自带默认值
@@ -251,9 +257,17 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'default_option':col['default_option'],
 				'collation_id':col['collation_id'],
 				'srs_id':col['srs_id'],
+				'version_dropped':version_dropped,
+				'version_added':version_added,
+				'physical_pos':physical_pos,
 				'ct':ct #属于类型
 			}
+		column_ph = []
+		for _xx in column:
+			column_ph.append([column[_xx]['physical_pos'],_xx])
+		column_ph.sort()
 		self.table.column = column
+		self.table.column_ph = column_ph
 		self.table.have_null = nullable
 		self.table.have_null_instant = nullable_instant
 		self.table.null_bitmask_count = null_bitmask_count

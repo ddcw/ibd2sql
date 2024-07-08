@@ -71,7 +71,7 @@ class ibd2sql(object):
 		#self.SQL_PREFIX = f"{ 'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}{'(`'+'`,`'.join([ self.table.column[x]['name'] for x in self.table.column ]) + '`)' if self.COMPLETE_SQL else ''} VALUES "
 		SQL_PREFIX = f"{'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}("
 		for x in self.table.column:
-			if self.table.column[x]['is_virtual'] or not self.COMPLETE_SQL:
+			if self.table.column[x]['is_virtual'] or not self.COMPLETE_SQL or self.table.column[x]['version_dropped'] > 0:
 				continue
 			else:
 				SQL_PREFIX += f"`{self.table.column[x]['name']}`,"
@@ -294,6 +294,8 @@ class ibd2sql(object):
 		"""
 		sql = '('
 		for colno in self.table.column:
+			if self.table.column[colno]['version_dropped'] > 0:
+				continue
 			data = row[colno]
 			if data is None:
 				sql  = f"{sql}NULL, "

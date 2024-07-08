@@ -4,12 +4,12 @@
 
 # 参数:
 # 原始数据库, 即需要测试的数据库
-MYSQLBIN1="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
+MYSQLBIN1="mysql -h127.0.0.1 -P3372 -p123456 -uroot"
 MYSQLDB1="ibd2sql_t1"
-SERVER="root:123456@127.0.0.1:3366" #不知道字符集, 就没法生成表结构... 
+SERVER="root:123456@127.0.0.1:3372" #不知道字符集, 就没法生成表结构... 
 
 # 目标数据库, 即解析后的数据存放目录
-MYSQLBIN2="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
+MYSQLBIN2="mysql -h127.0.0.1 -P3372 -p123456 -uroot"
 MYSQLDB2="ibd2sql_t2"
 
 # 中间数据库, 如果是Mysql 5.7则需要使用mysqlfrm解析表结构并插入中间库, 方便获取sdi信息
@@ -164,8 +164,12 @@ test1(){
 		RUNSQL2 "checksum table ${name};"
 	else
 		#其实还是使用的crc32, 方便展示
-		RUNSQL1 "set session group_concat_max_len=102400000000;select crc32(group_concat(id,aa,bb)) from ${name}"
-		RUNSQL2 "set session group_concat_max_len=102400000000;select crc32(group_concat(id,aa,bb)) from ${name}"
+		#RUNSQL1 "set session group_concat_max_len=102400000000;select crc32(group_concat(id,aa,bb)) from ${name}"
+		#RUNSQL2 "set session group_concat_max_len=102400000000;select crc32(group_concat(id,aa,bb)) from ${name}"
+		RUNSQL1 "select concat('select crc32(group_concat(concat(',group_concat(COLUMN_NAME),'))) from ${name}') from information_schema.columns where table_name='${name}' and table_schema='${MYSQLDB1}';"
+		RUNSQL1 "${RESULT1}"
+		RUNSQL2 "select concat('select crc32(group_concat(concat(',group_concat(COLUMN_NAME),'))) from ${name}') from information_schema.columns where table_name='${name}' and table_schema='${MYSQLDB2}';"
+		RUNSQL2 "${RESULT2}"
 	fi
 	printf1 ${name} `echo ${RESULT1} | awk '{print $NF}'` `echo ${RESULT2} | awk '{print $NF}'`
 	
@@ -484,7 +488,7 @@ test_add_column(){
 	RUNSQL1 "create table if not exists ddcw_test_add_col(id int, aa varchar(20))"
 	RUNSQL1 "insert into ddcw_test_add_col values(1,'aa')"
 	RUNSQL1 "alter table ddcw_test_add_col add column bb varchar(20)"
-	RUNSQL1 "insert into ddcw_test_add_col values(2,'bb','newb')"
+	RUNSQL1 "insert into ddcw_test_add_col values(2,'bb','newbBYDDCW')"
 	add_crc32 ddcw_test_add_col
 }
 
@@ -550,7 +554,7 @@ test_ascii(){
 	for x in {1..100};do
 		RUNSQL1 "insert into ddcw_test_ascii values(${x},'https://github.com/ddcw/ibd2sql','ddcw')"
 	done
-	#add_crc32 ddcw_test_ascii
+	#add_crc32 ddcw_test_ascii # 没做字段字符集的展示,导致crc32结果不一致, 那就使用hash吧 -_-.
 	add_sha1 ddcw_test_ascii
 }
 
@@ -569,6 +573,58 @@ test_hidden_drop_col(){
 	add_crc32 ddcw_test_drop_col
 }
 
+test_60_ddl(){
+	RUNSQL1 "drop table if exists ddcw_test_60_ddl;"
+	RUNSQL1 "create table if not exists ddcw_test_60_ddl(cc0 varchar(32), cc1 varchar(32), cc2 varchar(32), cc3 varchar(32), cc4 varchar(32), cc5 varchar(32), cc6 varchar(32), cc7 varchar(32), cc8 varchar(32), cc9 varchar(32));"
+	echo ""
+	COLLIST=() 
+	for i in {1..60};do
+		# 判断是加列还是删列
+		action='del'
+		if [[ ${COLLIST[@]} == '' ]];then
+			action='add'
+		else
+			if [ $[ $RANDOM % 2 ] -eq 0 ];then
+				action='add'
+			fi
+		fi
+
+		if [ "${action}" == 'add' ];then
+			COLLIST+=($i)
+			ddl="alter table ddcw_test_60_ddl add column c${i} varchar(32)"
+			if [ $[ $RANDOM % 2 ] -eq 0 ];then
+				ddl+=" after cc$[ $RANDOM % 9 ]"
+			fi
+			RUNSQL1 "${ddl}"
+		elif [ "${action}" == 'del' ];then
+			_n=$[ ${RANDOM} % ${#COLLIST[@]} ]
+			colname="c${COLLIST[$_n]}"
+			ddl="alter table ddcw_test_60_ddl drop column ${colname}"
+			RUNSQL1 "${ddl}"
+			unset 'COLLIST[_n]'
+			COLLIST=("${COLLIST[@]}")
+			
+		fi
+		echo "-- DDL: ${ddl};"
+		# 插入数据
+		for x in {1..60};do
+			sql="insert into ddcw_test_60_ddl values("
+			for y in {1..10}; do sql+="\"`echo $RANDOM|md5sum|awk '{print $1}'`\",";done
+			aa=0
+			while [ ${aa} -lt ${#COLLIST[@]} ];do
+				aa=$[ ${aa} + 1 ]
+				sql+="\"`echo $RANDOM|md5sum|awk '{print $1}'`\","
+			done
+			sql=${sql::-1}")"
+			RUNSQL1 "${sql}"
+			#echo "${sql};"
+		done
+
+	done
+	add_sha1 ddcw_test_60_ddl
+	add_crc32 ddcw_test_60_ddl
+}
+
 echo "<数据类型测试> 初始化数据中..."
 test_varchar
 test_int #含double, float, decimal
@@ -583,6 +639,8 @@ test_ascii
 #echo "<default date> 初始化数据中..."
 #test_default_date
 test_hidden_drop_col
+echo "<test_60_ddl> 初始化数据中..."
+test_60_ddl
 
 RUNSQL1 "flush tables;" 
 sleep 3
