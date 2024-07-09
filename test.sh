@@ -4,17 +4,17 @@
 
 # 参数:
 # 原始数据库, 即需要测试的数据库
-MYSQLBIN1="mysql -h127.0.0.1 -P3372 -p123456 -uroot"
+MYSQLBIN1="mysql -h127.0.0.1 -P3374 -p123456 -uroot"
 MYSQLDB1="ibd2sql_t1"
-SERVER="root:123456@127.0.0.1:3372" #不知道字符集, 就没法生成表结构... 
+SERVER="root:123456@127.0.0.1:3308" #不知道字符集, 就没法生成表结构... 
 
 # 目标数据库, 即解析后的数据存放目录
-MYSQLBIN2="mysql -h127.0.0.1 -P3372 -p123456 -uroot"
+MYSQLBIN2="mysql -h127.0.0.1 -P3374 -p123456 -uroot"
 MYSQLDB2="ibd2sql_t2"
 
 # 中间数据库, 如果是Mysql 5.7则需要使用mysqlfrm解析表结构并插入中间库, 方便获取sdi信息
 # 必须是8.0 仅原始数据库为5.7的时候需要
-MYSQLBIN3="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
+MYSQLBIN3="mysql -h127.0.0.1 -P3374 -p123456 -uroot"
 MYSQLDB3="ibd2sql_t3"
 
 # 输出格式:
@@ -625,6 +625,16 @@ test_60_ddl(){
 	add_crc32 ddcw_test_60_ddl
 }
 
+test_vector(){
+	RUNSQL1 "drop table if exists ddcw_test_vector;"
+	RUNSQL1 "create table if not exists ddcw_test_vector(id int, aa vector(2048), bb vector(6666));"
+	RUNSQL1 "insert into ddcw_test_vector values(1,TO_VECTOR('[2048,2048]'),TO_VECTOR('[6666,6666]'))"
+	RUNSQL1 "insert into ddcw_test_vector values(2,null,TO_VECTOR('[1,1]'))"
+	RUNSQL1 "insert into ddcw_test_vector values(3,TO_VECTOR('[1,1]'),null)"
+	RUNSQL1 "insert into ddcw_test_vector values(4,null,null)"
+	add_crc32 ddcw_test_vector
+}
+
 echo "<数据类型测试> 初始化数据中..."
 test_varchar
 test_int #含double, float, decimal
@@ -639,8 +649,18 @@ test_ascii
 #echo "<default date> 初始化数据中..."
 #test_default_date
 test_hidden_drop_col
-echo "<test_60_ddl> 初始化数据中..."
-test_60_ddl
+if ${ISMYSQL5};then
+	echo "skip <test_60_ddl>"
+else
+	echo "<test_60_ddl> 初始化数据中..."
+	test_60_ddl
+fi
+if [ "${MYSQL_VERSION1::1}" == "9" ];then
+	echo "<test_vector> 初始化数据中..."
+	test_vector
+else
+	echo "skip <test_vector>"
+fi
 
 RUNSQL1 "flush tables;" 
 sleep 3
