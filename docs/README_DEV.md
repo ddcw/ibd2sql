@@ -689,19 +689,4 @@ json是mysql对其二进制化的, 对于innodb只是普通的二进制而已.�
 
 
 
-# ONLINE DDL(instant)
-
-如果是做过online ddl的, 则读数据的时候需要注意下.
-
-```
-if recorde_header.instant and col['instant']:
-	read key
-	raed filed
-	read filed with instant
-	
-if not recorde_header.instant  and col['instant']:
-	rad key
-	read field   新增字段取默认值
-	
-```
 
