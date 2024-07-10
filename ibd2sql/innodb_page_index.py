@@ -317,7 +317,8 @@ class ROW(page):
 			else:
 				ROW_VERSION = -1
 
-			if self.table.mysqld_version_id < 80029 and self.table.mysqld_version_id >=80012 and rheader.instant: 
+			# 8.0.12-28的add column
+			if self.table.mysqld_version_id < 80029 and self.table.mysqld_version_id >=80012 and rheader.instant_flag: 
 				_COLUMN_COUNT = self._read_innodb_varsize() 
 				# 1-2字节表示字段数量(含row_id,trx,rollptr), 
 				self.debug(f"_COLUMN_COUNT:{_COLUMN_COUNT}")
@@ -345,15 +346,15 @@ class ROW(page):
 			#	null_bitmask_count = self.table.null_bitmask_count + self.table.null_bitmask_count_instant
 
 
-			null_bitmask_count = 0
-			for colno in self.table.column:
-				col = self.table.column[colno]
-				#print(col['name'],ROW_VERSION,col['version_dropped'],col['version_added'])
-				if col['is_nullable']:
-					if col['version_dropped'] > col['version_added'] :#and col['version_added'] >= ROW_VERSION:
-						pass
-					else:
-						null_bitmask_count += 1
+		#	null_bitmask_count = 0
+		#	for colno in self.table.column:
+		#		col = self.table.column[colno]
+		#		#print(col['name'],ROW_VERSION,col['version_dropped'],col['version_added'])
+		#		if col['is_nullable']:
+		#			if col['version_dropped'] > col['version_added'] :#and col['version_added'] >= ROW_VERSION:
+		#				pass
+		#			else:
+		#				null_bitmask_count += 1
 
 			null_bitmask_count = 0
 			for _phno,colno in self.table.column_ph:
