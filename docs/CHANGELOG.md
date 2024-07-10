@@ -12,6 +12,7 @@
 | v1.2 | 2024.04.25 | 新增空间坐标的支持              | 支持geometry[collection],[multi]point,[multi]linestring,[multi]polygon |
 | v1.3 | 2024.05.11 | 支持mysql 5.7            | 本来准备做二级分区支持的, 但看了下, WC, 太复杂了-_- 那就更新个支持5.7的吧(其实结构和8.0是差不多的) (for issue 7) |
 | v1.4 | 2024.05.21 | 修复已知BUG, 完善测试案例.支持溢出页. | 1. 修复已知BUG.  <br />2. 完善测试案例(支持5.6).<br />3. 完善相关文档.<br />4. 支持溢出页<br />5. 支持字段的ascii字符集.<br />6. 支持子分区(二级分区) |
+| v1.5 | 2024.07.10 | instant相关BUG修复,vector数据类型的支持  | 1. 修复INSTANT相关的BUG(重写了相关代码).  <br />2. 支持mysql9.0新增的vector数据类型 <br />3.完善测试脚本 |
 
 
 
@@ -27,3 +28,4 @@
 8. [ONLINE DDL instant](https://github.com/ddcw/ibd2sql/issues/12) : record 1-2 bit is instant flag
 9. [mysql 5.7 解析无数据](https://github.com/ddcw/ibd2sql/issues/17) : mysql 5.7无SDI PAGE, INODE不需要去掉第一个INDEX
 10. [char字段为ascii](https://github.com/ddcw/ibd2sql/issues/9) : char字段如果是ascii字符集则不会额外记录字段长度
+11. instant相关BUG和vector的支持

@@ -14,7 +14,7 @@ MYSQLDB2="ibd2sql_t2"
 
 # 中间数据库, 如果是Mysql 5.7则需要使用mysqlfrm解析表结构并插入中间库, 方便获取sdi信息
 # 必须是8.0 仅原始数据库为5.7的时候需要
-MYSQLBIN3="mysql -h127.0.0.1 -P3374 -p123456 -uroot"
+MYSQLBIN3="mysql -h127.0.0.1 -P3314 -p123456 -uroot"
 MYSQLDB3="ibd2sql_t3"
 
 # 输出格式:
@@ -133,10 +133,10 @@ test1(){
 		fi
 	else
 		if ${ISPARTITION};then
-			${comm} --ddl ${DATADIR1}/${MYSQLDB1}/${FIRSTPARITION_NAME} --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+			${comm} --ddl ${DATADIR1}/${MYSQLDB1}/${FIRSTPARITION_NAME} --table ${name} --schema ${MYSQLDB2} 2>/dev/null | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 			comm="${comm} --sdi-table ${DATADIR1}/${MYSQLDB1}/${FIRSTPARITION_NAME}"
 		else
-			${comm} --ddl ${DATADIR1}/${MYSQLDB1}/${name}.ibd --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+			${comm} --ddl ${DATADIR1}/${MYSQLDB1}/${name}.ibd --table ${name} --schema ${MYSQLDB2} 2>/dev/null | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 			comm="${comm} --ddl "
 		fi
 	fi
@@ -149,10 +149,10 @@ test1(){
 			mysqlflag="P"
 		fi
 		for filename in `ls ${DATADIR1}/${MYSQLDB1}/${name}#${mysqlflag}#*.ibd`;do
-			${comm} --sql ${filename} --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+			${comm} --sql ${filename} --table ${name} --schema ${MYSQLDB2} 2>/dev/null | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 		done
 	else
-		${comm} --sql ${DATADIR1}/${MYSQLDB1}/${name}.ibd --table ${name} --schema ${MYSQLDB2} | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
+		${comm} --sql ${DATADIR1}/${MYSQLDB1}/${name}.ibd --table ${name} --schema ${MYSQLDB2} 2>/dev/null | ${MYSQLBIN2} -NB -D${MYSQLDB2} >/dev/null 2>&1
 	fi
 
 	# 校验数据

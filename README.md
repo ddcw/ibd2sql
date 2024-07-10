@@ -1,6 +1,8 @@
 # 介绍
 
-[ibd2sql](https://github.com/ddcw/ibd2sql)是一个使用`python3`编写的**离线解析**MYSQL INNODB存储引擎的`ibd文件`的工具. 无第三方依赖包, **纯python3代码**. 使用**GPL-3.0** license.
+[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform mysql ibd file to sql(data).
+
+[ibd2sql](https://github.com/ddcw/ibd2sql)是一个使用纯`python3`编写的**离线解析**MYSQL INNODB存储引擎的`ibd文件`的工具. 无第三方依赖包. 使用**GPL-3.0** license.
 
 
 
@@ -13,7 +15,7 @@
 5. **支持复杂的表结构**: 分区表, 注释, 主键, 外键, 约束, 自增, 普通索引, 前缀索引, 主键前缀索引, 唯一索引, 复合索引, 默认值, 符号, 虚拟字段, INSTANT, 无主键等情况的表
 6. **数据误删恢复**: 可以输出被标记为deleted的数据
 7. **安全**: 离线解析ibd文件, 仅可读权限即可
-8. **支持范围广**: 支持mysql 5.6 or 5.7 or 8.0 or 8.4
+8. **支持范围广**: 支持mysql 5.6 or 5.7 or 8.0 or 8.4 or 9.0
 
 
 
@@ -25,7 +27,9 @@
 
 本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.4 版本下载地址: <https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.4.tar.gz>
+V1.5 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+
+若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
 
 ## 下载
 
@@ -57,17 +61,17 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 
 # 版本更新
 
-| 版本   | 更新时间       | 说明                |
-| ---- | ---------- | ----------------- |
-| v0.1 | 2023.4.27  | 第一个版本             |
-| v0.2 | 2023.08.30 | 支持更多数据类型          |
-| v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件 |
-| v1.0 | 2024.01.05 | 支持debug,支持更多类型和功能 |
-| v1.1 | 2024.04.12 | 修复一些bug           |
-| v1.2 | 2024.04.25 | 新增空间坐标的支持         |
-| v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7  |
-| v1.4 | 2024.05.21 | 支持溢出页, 子分区        |
-| v1.5 | TODO | vector and instant BUG        |
+| 版本   | 更新时间       | 说明                     |
+| ---- | ---------- | ---------------------- |
+| v0.1 | 2023.4.27  | 第一个版本                  |
+| v0.2 | 2023.08.30 | 支持更多数据类型               |
+| v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件      |
+| v1.0 | 2024.01.05 | 支持debug,支持更多类型和功能      |
+| v1.1 | 2024.04.12 | 修复一些bug                |
+| v1.2 | 2024.04.25 | 新增空间坐标的支持              |
+| v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7       |
+| v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
+| v1.5 | 2024.07.10 | vector and instant BUG |
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 
@@ -77,4 +81,4 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 
 要求: python3
 
-支持范围: mysql5.x 8.x
+支持范围: mysql5.x 8.x 9.x

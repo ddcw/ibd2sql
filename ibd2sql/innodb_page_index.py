@@ -317,8 +317,10 @@ class ROW(page):
 			else:
 				ROW_VERSION = -1
 
-			if self.table.mysqld_version_id == 80028 and rheader.instant: # 不知道为啥要多读1字节
-				_ = self._read_innodb_varsize() 
+			if self.table.mysqld_version_id < 80029 and self.table.mysqld_version_id >=80012 and rheader.instant: 
+				_COLUMN_COUNT = self._read_innodb_varsize() 
+				# 1-2字节表示字段数量(含row_id,trx,rollptr), 
+				self.debug(f"_COLUMN_COUNT:{_COLUMN_COUNT}")
 
 			#NULL
 			null_bitmask = 0
