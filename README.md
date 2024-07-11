@@ -1,37 +1,36 @@
-# 介绍
+# INTRODUCE
 
-[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform mysql ibd file to sql(data).
+[中文版介绍](https://github.com/ddcw/ibd2sql/blob/main/README_zh.md)
 
-[ibd2sql](https://github.com/ddcw/ibd2sql)是一个使用纯`python3`编写的**离线解析**MYSQL INNODB存储引擎的`ibd文件`的工具. 无第三方依赖包. 使用**GPL-3.0** license.
-
-
-
-# 特点
-
-1. **方便**: 提取表DDL
-2. **实用**: 可替换库(--schema)/表(--table)名, 可在sql语句中输出完整的字段(--complete)
-3. **简单**: 纯python3代码编写, 无依赖包.
-4. **支持众多数据类型**: 支持所有mysql数据类型
-5. **支持复杂的表结构**: 分区表, 注释, 主键, 外键, 约束, 自增, 普通索引, 前缀索引, 主键前缀索引, 唯一索引, 复合索引, 默认值, 符号, 虚拟字段, INSTANT, 无主键等情况的表
-6. **数据误删恢复**: 可以输出被标记为deleted的数据
-7. **安全**: 离线解析ibd文件, 仅可读权限即可
-8. **支持范围广**: 支持mysql 5.6 or 5.7 or 8.0 or 8.4 or 9.0
+[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform mysql ibd file to sql(data). It can parse *IBD* files into *SQL* statements. ibd2sql written with Python is commonly used to learn *IBD* files and data recovery.
 
 
 
-测试例子: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/ALLTEST.md)
+# FEATURE
+
+~~Simple and useful !~~
+
+Security: as long as the file has **read** permission.
+
+Comprehensiveness: **all** column types in mysql 5.x or 8.x or 9.x
+
+Simple: using Python to write packages without third-party dependencies.
+
+Useful: parse data with mark of deleted (--delete).
 
 
 
-# 下载使用
 
-本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.5 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+# DOWNLOAD & USAGE
 
-若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
+v1.5 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
 
-## 下载
+
+
+## download
+
+**Linux**
 
 ```shell
 wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
@@ -39,46 +38,78 @@ unzip main.zip
 cd ibd2sql-main
 ```
 
-## 使用
+**Windows**
+
+click [https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip](https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip) to download
+
+
+
+## usage
 
 **Linux**
 
 ```shell
-python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --ddl
+python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl
+# or use redirection to save data
+python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl > xxx.sql
 ```
 
 **Windows**
 
-注意python名字和路径
+Python3 is called Python on Windows
+
+Path usage '\' instead of '/'
 
 ```shell
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 ```
 
-更多使用方法或者5.7环境请看:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
+more usage:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
 
 
 
-# 版本更新
+# Example
 
-| 版本   | 更新时间       | 说明                     |
-| ---- | ---------- | ---------------------- |
-| v0.1 | 2023.4.27  | 第一个版本                  |
-| v0.2 | 2023.08.30 | 支持更多数据类型               |
-| v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件      |
-| v1.0 | 2024.01.05 | 支持debug,支持更多类型和功能      |
-| v1.1 | 2024.04.12 | 修复一些bug                |
-| v1.2 | 2024.04.25 | 新增空间坐标的支持              |
-| v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7       |
-| v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
-| v1.5 | 2024.07.10 | vector and instant BUG |
+env linux:
 
-详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
+```shell
+# suggestion cp file to anothor OS/FS
+SHELL> cp -ra /data/mysql_3314/mysqldata/db1/test_ibd2sql.ibd /tmp
+
+SHELL> python3 main.py /tmp/test_ibd2sql.ibd --ddl --sql
+CREATE TABLE IF NOT EXISTS `db1`.`test_ibd2sql`(
+    `id` int NULL,
+    `name` varchar(127) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci ;
+INSERT INTO `db1`.`test_ibd2sql` VALUES (1, 'ddcw');
+INSERT INTO `db1`.`test_ibd2sql` VALUES (2, 'ibd2sql v1.5');
+
+```
+
+more example: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/ALLTEST.md)
 
 
 
-# 要求和支持范围
+# CHANGE LOG
 
-要求: python3
+| VERSION | UPDATE     | NOTE                                     |
+| ------- | ---------- | ---------------------------------------- |
+| v0.1    | 2023.4.27  | first version                            |
+| v0.2    | 2023.08.30 | support more data types                  |
+| v0.3    | 2023.10.13 | support parse file from 5.x upgrade to 8.x |
+| v1.0    | 2024.01.05 | add debug and support more data types    |
+| v1.1    | 2024.04.12 | fix some bugs                            |
+| v1.2    | 2024.04.25 | add support of geometry data types       |
+| v1.3    | 2024.05.11 | add support 5.x                          |
+| v1.4    | 2024.05.21 | add support extra page and subpartition  |
+| v1.5    | 2024.07.10 | add support vector data types and fix INSTANT bug |
 
-支持范围: mysql5.x 8.x 9.x
+detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
+
+
+
+# REQUIRE & SUPPORT
+
+require: python3
+
+support range: mysql5.x 8.x 9.x
