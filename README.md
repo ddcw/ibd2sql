@@ -58,7 +58,7 @@ python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl > xxx.sql
 
 Python3 is called Python on Windows
 
-Path usage '\' instead of '/'
+Path usage '\\' instead of '/'
 
 ```shell
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
