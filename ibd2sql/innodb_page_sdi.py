@@ -118,6 +118,8 @@ class TABLE(object):
 			ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`{'' if x[1] == 0 else '('+str(x[1])+')'} {'DESC' if x[2] == 3 else ''}" for x in idx['element_col'] ] )   + ")"
 			#ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`" for x in idx['element_col'] ] )   + ")" #不考虑前缀索引
 			ddl += " COMMENT " + repr(idx['comment']) if idx['comment'] != "" else ''
+			if not idx['is_visible']:
+				ddl += " /*!80000 INVISIBLE */"
 			ddl += ",\n"
 		return ddl[:-2]
 
@@ -276,6 +278,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 
 		index = {}
 		for idx in dd['dd_object']['indexes']:
+			# issue 35
+			is_visible = False if 'is_visible' in idx and (not idx['is_visible']) else True
 			element_col = []
 			comment = idx['comment'] 
 			hidden = idx['hidden']
@@ -311,7 +315,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'comment':comment,
 				'idx_type':idx_type,
 				'element_col':element_col,
-				'options':_options
+				'options':_options,
+				'is_visible':is_visible
 			}
 		self.table.index = index
 
