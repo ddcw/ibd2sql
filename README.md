@@ -24,7 +24,7 @@ Useful: parse data with mark of deleted (--delete).
 
 # DOWNLOAD & USAGE
 
-v1.5 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+v1.6 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz)
 
 
 
@@ -103,6 +103,7 @@ more example: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/A
 | v1.3    | 2024.05.11 | add support 5.x                          |
 | v1.4    | 2024.05.21 | add support extra page and subpartition  |
 | v1.5    | 2024.07.10 | add support vector data types and fix INSTANT bug |
+| v1.6    | 2024.09.19 | fix some bugs |
 
 detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

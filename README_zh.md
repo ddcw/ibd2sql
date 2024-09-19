@@ -27,7 +27,7 @@
 
 本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.5 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+V1.6 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz)
 
 若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
 
@@ -72,6 +72,7 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 | v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7       |
 | v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
 | v1.5 | 2024.07.10 | vector and instant BUG |
+| v1.6 | 2024.09.19 | 修复一些bug                |
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 
