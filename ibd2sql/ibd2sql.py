@@ -294,6 +294,8 @@ class ibd2sql(object):
 		"""
 		sql = '('
 		for colno in self.table.column:
+			if self.table.column[colno]['is_virtual']:
+				continue
 			if self.table.column[colno]['version_dropped'] > 0:
 				continue
 			data = row[colno]

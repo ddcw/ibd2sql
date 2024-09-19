@@ -88,10 +88,10 @@ class TABLE(object):
 			ddl += f"`{col['name']}` {col['type']}" #column name
 			if self.COLUMN_COLL and col['type'] != 'int':
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
-			if not col['is_virtual'] and col["default_option"] == "":
-				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			if col['srs_id'] > 0:
 				ddl += f" /*!80003 SRID {col['srs_id']} */"
+			if not col['is_virtual'] and col["default_option"] == "":
+				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			else:
 				#虚拟列 VIRTUAL 
 				ddl += f"{' GENERATED ALWAYS AS (' + col['generation_expression'] + ') VIRTUAL' if col['is_virtual'] else '' }"

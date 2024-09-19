@@ -417,6 +417,8 @@ class ROW(page):
 				if colno in _data: # KEY
 					continue
 				col = self.table.column[colno]
+				if col['is_virtual']:
+					continue
 				self.debug(f"\tNAME: {col['name']}  VERSION_ADDED:{col['version_added']}  VERSION_DROPED:{col['version_dropped']} COL_INSTANT:{col['instant']} ROW VERSION:{ROW_VERSION}")
 				if rheader.row_version_flag: # >=8.0.29 的online ddl
 					if (ROW_VERSION >= col['version_added'] and (col['version_dropped'] == 0 or col['version_dropped'] > ROW_VERSION)) or (col['version_dropped'] > ROW_VERSION and ROW_VERSION >= col['version_added']):
