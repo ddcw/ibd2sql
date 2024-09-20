@@ -64,7 +64,13 @@ class ibd2sql(object):
 		self.debug(f"ibd2sql.read PAGE: {self.PAGE_ID} ")
 		self.f.seek(self.PAGESIZE*self.PAGE_ID,0)
 		#self.PAGE_ID += 1
-		return self.f.read(self.PAGESIZE)
+		#return self.f.read(self.PAGESIZE)
+		# FOR COMPRESS PAGE
+		data = self.f.read(self.PAGESIZE)
+		if data[24:26] == b'\x00\x0e': # 14: 压缩页, 先解压
+			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
+			data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + zlib.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1])
+		return data
 
 	def _init_sql_prefix(self):
 		#self.table.remove_virtual_column() #把虚拟字段干掉

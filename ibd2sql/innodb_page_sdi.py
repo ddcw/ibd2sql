@@ -145,6 +145,8 @@ class TABLE(object):
 		if self.COLLATION:
 			ddl += f" DEFAULT CHARSET={self.table_options['charset']} COLLATE={self.table_options['collate']}"
 		ddl += f" {' COMMENT '+repr(self.table_options['comment']) if self.table_options['comment'] != '' else ''}"
+		# FOR COMPRESS
+		ddl += f"{' COMPRESSION='+repr(self.table_options['compress']) if 'compress' in self.table_options else ''}"
 		return ddl
 
 class sdi(page):
