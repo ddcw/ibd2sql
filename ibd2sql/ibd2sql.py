@@ -5,6 +5,7 @@ from ibd2sql.innodb_page_sdi import *
 from ibd2sql.innodb_page_spaceORxdes import *
 from ibd2sql.innodb_page_inode import *
 from ibd2sql.innodb_page_index import *
+from ibd2sql import lz4
 import sys
 
 
@@ -69,7 +70,12 @@ class ibd2sql(object):
 		data = self.f.read(self.PAGESIZE)
 		if data[24:26] == b'\x00\x0e': # 14: 压缩页, 先解压
 			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
-			data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + zlib.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1])
+			if FIL_PAGE_ALGORITHM_V1 == 1:
+				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + zlib.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1])
+			elif FIL_PAGE_ALGORITHM_V1 == 2:
+				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + lz4.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1],FIL_PAGE_ORIGINAL_SIZE_V1)
+			else:
+				pass
 		return data
 
 	def _init_sql_prefix(self):
