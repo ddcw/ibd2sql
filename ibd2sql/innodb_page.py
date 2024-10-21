@@ -277,7 +277,7 @@ Example:
 	def read_innodb_enum(slef):
 		pass
 
-	def _read_innodb_varsize(self):
+	def _read_innodb_varsize(self,maxsize=256):
 		"""
 		返回varchar等类型 记录大小 所需的空间(1-2bytes)
 		2 bytes 直接表示64KB, 肯定不够(2**16 = 16384)
@@ -285,6 +285,8 @@ Example:
 		"""
 		_size = self.readreverse(1)
 		size = struct.unpack('>B',_size)[0]
+		if maxsize <= 255:
+			return size
 		if size > REC_N_FIELDS_ONE_BYTE_MAX:
 			size = struct.unpack('>B',self.readreverse(1))[0] + (size-128)*256
 		return size

@@ -145,7 +145,7 @@ class ROW(page):
 		_bf_offset = self.offset
 		if col['isbig']:
 			#data = self.read_innodb_big()
-			size = self._read_innodb_varsize()
+			size = self._read_innodb_varsize(col['char_length'])
 			if size + self.offset > 16384:
 				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 				self.debug(f"SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
@@ -170,7 +170,7 @@ class ROW(page):
 			if col['character_set'] == "ascii" and col['ct'] == "char": #不用记录大小, 直接读 issue 9
 				_tdata = self.read(col['size']) 
 			else:
-				size = self._read_innodb_varsize()
+				size = self._read_innodb_varsize(col['char_length'])
 				if size + self.offset > 16384:
 					SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 					self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
