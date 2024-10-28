@@ -32,7 +32,7 @@ class TABLE(object):
 		self.FOREIGN = True
 		self.ENCRYPTION = True
 		self.AUTO_EXTEND = True
-		self.COLUMN_COLL = False #解析字段的排序规则/字符集 
+		self.COLUMN_COLL = True #解析字段的排序规则/字符集 
 		self.COLLATION = True #表的排序规则还是要的
 		self.HAS_EXIST = True #是否有has exist
 		self.CONSTRAINT = True #支持约束
@@ -86,7 +86,7 @@ class TABLE(object):
 			ddl += self._ci
 			col = self.column[colid]
 			ddl += f"`{col['name']}` {col['type']}" #column name
-			if self.COLUMN_COLL and col['type'] != 'int':
+			if self.COLUMN_COLL and col['type'] != 'int' and (self.table_options['charset'] != col['character_set']):
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
 			if col['srs_id'] > 0:
 				ddl += f" /*!80003 SRID {col['srs_id']} */"

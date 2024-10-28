@@ -18,6 +18,20 @@ def page_directory(bdata):
 			break
 	return page_directorys
 
+# 参考: https://dev.mysql.com/doc/refman/8.0/en/charset-unicode.html
+#       https://docs.python.org/3/library/codecs.html#standard-encodings
+def char_decode(data,col):
+	if col['character_set'] == 'ucs2':
+		return data.decode('utf-16-be')
+	elif col['character_set'] == 'utf16': # utf16默认是大端字节序
+		return data.decode('utf-16-be')
+	elif col['character_set'] == 'utf16le':
+		return data.decode('utf-16-le')
+	elif col['character_set'] == 'utf32':
+		return data.decode('utf-32-be')
+	else:
+		return data.decode()
+
 
 class record_header(object):
 	"""
@@ -162,7 +176,8 @@ class ROW(page):
 				data = '0x'+_tdata.hex()
 			else: 
 				try:
-					data = _tdata.decode()
+					#data = _tdata.decode()
+					data = char_decode(_tdata,col)
 				except Exception as e:
 					self.debug(f"BLOB ERROR {e}")
 					data = '0x'+_tdata.hex()
@@ -178,7 +193,8 @@ class ROW(page):
 				else:
 					_tdata = self.read(size)
 			try:
-				data = _tdata.decode().rstrip()  # 直接去掉空字符吧
+				#data = _tdata.decode().rstrip()  # 直接去掉空字符吧
+				data = char_decode(_tdata,col)
 			except Exception as e:
 				self.debug(f"BLOB ERROR {e}")
 				data = '0x'+_tdata.hex()
