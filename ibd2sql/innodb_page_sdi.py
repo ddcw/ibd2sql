@@ -86,7 +86,7 @@ class TABLE(object):
 			ddl += self._ci
 			col = self.column[colid]
 			ddl += f"`{col['name']}` {col['type']}" #column name
-			if self.COLUMN_COLL and col['type'] != 'int' and (self.table_options['charset'] != col['character_set']):
+			if self.COLUMN_COLL and col['type'] != 'int' and (self.table_options['charset'] != col['character_set']) and col['isvar'] and col['type'][:7] == 'varchar':
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
 			if col['srs_id'] > 0:
 				ddl += f" /*!80003 SRID {col['srs_id']} */"

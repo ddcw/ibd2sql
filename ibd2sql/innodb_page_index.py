@@ -373,13 +373,19 @@ class ROW(page):
 		#				null_bitmask_count += 1
 
 			null_bitmask_count = 0
+			_t_COLUMN_COUNT = 2
 			for _phno,colno in self.table.column_ph:
+				_t_COLUMN_COUNT += 1
 				col = self.table.column[colno]
 				if rheader.row_version_flag:
 					if (ROW_VERSION >= col['version_added'] and (col['version_dropped'] == 0 or col['version_dropped'] > ROW_VERSION)) or (col['version_dropped'] > ROW_VERSION and ROW_VERSION >= col['version_added']):
 						null_bitmask_count += 1 if col['is_nullable'] else 0
 				else:
+					if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
+						break
 					null_bitmask_count += 1 if col['is_nullable'] else 0
+			if not rheader.instant_flag:
+				null_bitmask_count = self.table.null_bitmask_count
 				
 
 			#print(null_bitmask_count)
@@ -429,11 +435,16 @@ class ROW(page):
 			self.debug(f"INSTANT FLAG     : {rheader.instant_flag}")
 			self.debug(f"ROW VERSION FLAG : {rheader.row_version_flag}")
 			_nullable_count = -1
+			_t_COLUMN_COUNT = 2
 			for _phno,colno in self.table.column_ph:
+				_t_COLUMN_COUNT += 1
 				if colno in _data: # KEY
 					continue
 				col = self.table.column[colno]
 				if col['is_virtual']:
+					continue
+				if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
+					_data[colno],_expage[colno] = None,None
 					continue
 				self.debug(f"\tNAME: {col['name']}  VERSION_ADDED:{col['version_added']}  VERSION_DROPED:{col['version_dropped']} COL_INSTANT:{col['instant']} ROW VERSION:{ROW_VERSION}")
 				if rheader.row_version_flag: # >=8.0.29 的online ddl
