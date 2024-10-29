@@ -27,7 +27,7 @@
 
 本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.6 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.6.tar.gz)
+V1.7 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz)
 
 若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
 
@@ -73,6 +73,7 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 | v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
 | v1.5 | 2024.07.10 | vector and instant BUG |
 | v1.6 | 2024.09.19 | 修复一些bug                |
+| v1.7 | 2024.10.29 | 1.修复一些bug <br />2.支持压缩页 <br />3.支持drop table的恢复  <br />4.ucs2,utf16,utf32 字符集支持             |
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

@@ -203,6 +203,60 @@ done
 ```
 
 
+## 恢复drop的表
+**目前只支持xfs文件系统的恢复**, 当不小心drop表之后, 应尽可能减少数据的写入. 文件/inode被重写了就无法恢复了.
+**drop表之后,尽量不要马上又创建一样的表,可能存在inode复用的问题.**
+用法如下:
+```shell
+# 扫描被删除的表 (/dev/sdb为数据文件所在文件系统, 如果是lv,则应该类似:/dev/mapper/centos-root)
+python3 xfs_recovery_v0.2.py /dev/vdb  # `df /data/mysql_3306/mysqldata/db1` 可查看某目录对应的文件系统
+
+# 查看对应inode的信息(可选,用来辅助判断的,indoeno来自上1条命令)
+python3 xfs_recovery_v0.2.py /dev/vdb 123456
+
+# 恢复某inode的数据到/tmp/new_table.ibd
+python3 xfs_recovery_v0.2.py /dev/vdb 123456 /tmp/new_table.ibd
+
+# 解析出相关DDL (5.7的话,就没法了... 除非应用有相关DDL)
+python3 main.py /tmp/new_table.ibd --ddl
+
+# 创建一样的表并导入数据库alter table import tablespace  (2选1)
+# 或者解析出sql语句导入数据库 (2选1)
+```
+
+例子: (我这里没啥IO,刷盘慢,所以执行了partprobe, 实际情况建议先别跑,不然inode可能会被回收)
+```shell
+[root@VM-32-12-centos ibd2sql-main]# mysql -h127.0.0.1 -p123456 -e 'drop table db1.sbtest1111'
+mysql: [Warning] Using a password on the command line interface can be insecure.
+[root@VM-32-12-centos ibd2sql-main]# partprobe /dev/vdb
+[root@VM-32-12-centos ibd2sql-main]# python3 xfs_recovery_v0.2.py /dev/vdb
+inode: 50331714
+inode: 50331715
+inode: 50331716
+inode: 50331718
+inode: 50331719
+inode: 50331720
+inode: 50331723
+inode: 67108945
+inode: 83886157
+inode: 83886158
+inode: 83886159
+inode: 150995009
+inode:234924935 filename:db1.sbtest100.ibd
+inode:235747986 filename:db1.sbtest1234.ibd
+[root@VM-32-12-centos ibd2sql-main]# python3 xfs_recovery_v0.2.py /dev/vdb 235747986 /tmp/sbtest1234.ibd
+[root@VM-32-12-centos ibd2sql-main]# python3 main.py /tmp/sbtest1234.ibd --ddl
+CREATE TABLE IF NOT EXISTS `db1`.`sbtest1234`(
+    `id` int NOT NULL AUTO_INCREMENT,
+    `k` int NOT NULL DEFAULT '0',
+    `c` char(120) NOT NULL DEFAULT '',
+    `pad` char(60) NOT NULL DEFAULT '',
+    PRIMARY KEY  (`id`),
+    KEY `k_1234` (`k`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci ;
+[root@VM-32-12-centos ibd2sql-main]# 
+
+```
 
 
 
