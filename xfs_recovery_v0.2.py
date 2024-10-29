@@ -317,6 +317,7 @@ class INODE(object):
 					_textent.append(x)
 					_tcount += x[2]
 			self.extent_size = 4096*_tcount
+			self.extent = _textent 
 
 		elif self.di_format == 3: # btr
 			self.level = self.data.read_int(2)
