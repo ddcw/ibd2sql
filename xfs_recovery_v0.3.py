@@ -10,12 +10,19 @@
 #      https://cdn.kernel.org/pub/linux/utils/fs/xfs/docs/xfs_filesystem_structure.pdf
 #      https://github.com/torvalds/linux/tree/master/fs/xfs
 
+# CHANGE LOG
+# v0.1 理论实现
+# v0.2 startblock是agno+blockid(in ag)
+# v0.3 扫描目录 (默认深度为1)
+
 import struct
 import sys,os
 import subprocess
 import zlib
 import json
 import datetime
+
+DIR_DEPTH = 1 # 遍历目录的深度. 算逑, 懒得递归了.
 
 # XFS SB
 XFS_SB_MAGIC                    =   0x58465342 # b'XFSB'
@@ -39,9 +46,22 @@ XFS_SB_VERSION_DIRV2BIT         =   0x2000
 XFS_SB_VERSION_BORGBIT          =   0x4000
 XFS_SB_VERSION_MOREBITSBIT      =   0x8000
 
+# sb_features2
+XFS_SB_VERSION2_RESERVED1BIT    =   0x00000001
+XFS_SB_VERSION2_LAZYSBCOUNTBIT  =   0x00000002      #/* Superblk counters */
+XFS_SB_VERSION2_RESERVED4BIT    =   0x00000004
+XFS_SB_VERSION2_ATTR2BIT        =   0x00000008      #/* Inline attr rework */
+XFS_SB_VERSION2_PARENTBIT       =   0x00000010      #/* parent pointers */
+XFS_SB_VERSION2_PROJID32BIT     =   0x00000080      #/* 32 bit project id */
+XFS_SB_VERSION2_CRCBIT          =   0x00000100      #/* metadata CRCs */
+XFS_SB_VERSION2_FTYPE           =   0x00000200      #/* inode type in dir */
+
 
 global MAX_BLOCKS
 MAX_BLOCKS = 0
+
+global SB_VERSION2_FTYPE
+SB_VERSION2_FTYPE = False
 
 # 解析sdi文件获取文件名(懒得做crc32c了)
 def read_name_from_ibd(bdata):
@@ -150,6 +170,9 @@ class SUPER_BLOCK(object):
 		self.logsunit = self.data.read_int(4)  # stripe unit size for the log
 		self.data.offset = 200
 		self.features2 = self.data.read_int(4) # additional feature bits
+		global SB_VERSION2_FTYPE
+		if self.features2 & XFS_SB_VERSION2_FTYPE:
+			SB_VERSION2_FTYPE = True
 		self.bad_features2 = self.data.read_int(4) 
 		self.features_compat = self.data.read_int(4)
 		self.features_ro_compat = self.data.read_int(4)
@@ -317,7 +340,7 @@ class INODE(object):
 					_textent.append(x)
 					_tcount += x[2]
 			self.extent_size = 4096*_tcount
-			self.extent = _textent 
+			self.extent = _textent
 
 		elif self.di_format == 3: # btr
 			self.level = self.data.read_int(2)
@@ -329,6 +352,24 @@ class INODE(object):
 				ptrs = struct.unpack('>Q',self.data.data[340+8*i:340+8*i+8])[0]
 				self.ptrs.append([keys,ptrs])
 			self.ptrs.sort()
+
+		elif self.di_format == 1: # local
+			self.sfdir_count = self.data.read_int(1)   # entry数量
+			self.sfdir_i8count = self.data.read_int(1) # 如果>0 就表示使用8字节来存inode
+			self.sfdir_parent = self.data.read_int(4) if self.sfdir_i8count == 0 else self.data.read_int(8)
+			self.dir_list = [] #[ [inode,filename] ] 
+			while True: # 我们是解析被删除的文件, 所以直接就遍历了..
+				try:
+					namelen = self.data.read_int(1)
+					offset = self.data.read_int(2) # 仅考虑4KB
+					name = self.data.read(namelen).decode()
+					if not SB_VERSION2_FTYPE:
+						ftype = self.data.read_int(1)
+					inumber = self.data.read_int(4) if self.sfdir_i8count == 0 else self.data.read_int(8)
+					if inumber > 0:
+						self.dir_list.append([inumber,name])
+				except Exception as e:
+					break
 			
 		else:
 			pass
@@ -530,6 +571,156 @@ class XFS(object):
 			agi = AGI(data[1024:1024+512])
 			#print('ROOT:',agi.root,'LEVEL:',agi.level)
 			self.inode_node(agno,agi.root)
+
+	def scan_dir(self,inumber=64,DIR_DEPTH=1):
+		"""扫描目录下面的被删除的文件,并打印出来"""
+		agno,blockid,blockoffset,offset = self.sb.de_inode(inumber)
+		self.f.seek(offset)
+		inode = INODE(self.f.read(512))
+		#print(inode)
+		if inode.di_mode_oct[2] == '4' and inode.di_format == 1: # local
+			for x in inode.dir_list:
+				try:
+					self.f.seek(self.sb.de_inode(x[0])[-1])
+				except Exception as e:
+					break
+				tinode = INODE(self.f.read(512))
+				#print(tinode.di_ino)
+				if tinode.status and tinode.di_mode == 0:
+					print('INODE:',x[0],'FILENAME:',x[1])
+		elif inode.di_mode_oct[2] == '4' and inode.di_format == 2: # block/extent
+			for startoff,startblock,blockcount,extentflag,ebtr in inode.extent:
+				for i in range(blockcount):
+					agno = startblock>>self.sb.agblklog
+					block_id = startblock&(2**self.sb.agblklog-1)
+					offset = agno*self.sb.agblocks+block_id+i
+					data = self.read(offset)
+					# hdr xfsv5(inode v3) xfs_dir3_blk_hdr
+					#print(data[:4])
+					if data[:4] not in(b'XDB3', b'XDD3'):
+						break
+					crc,blockno,lsn = struct.unpack('>LQQ',data[4:24])
+					uuid = data[24:40].hex() 
+					owner = struct.unpack('>Q',data[40:48]) # 就是所在/属目录的inode. 
+					# bestfree (里面可能有被删除的文件名字和inode, 但Inode可能被使用了, 所以没用...)
+					bestfree = struct.unpack('>6H',data[48:60]) # XFS_DIR2_DATA_FD_COUNT = 3
+					bestfree = {bestfree[0]:bestfree[1],bestfree[2]:bestfree[3],bestfree[4]:bestfree[5]}
+					# pad
+					pad = struct.unpack('>L',data[60:64]) # 填充, 为了到64字节
+
+					# tail (我这里要找删除的, 所以全都要)
+					count,stale = struct.unpack('>LL',data[-8:])
+					_toffset = 64
+					_startoffset = 64
+
+					# 直接扫描\xff\xff吧...
+					current_offset = 64
+					while current_offset < 4096:#< (4096-8-8*(count+stale)):
+						_current_offset = data[current_offset:].find(b'\xff\xff')
+						if _current_offset == -1:
+							break
+						current_offset += _current_offset
+						if current_offset >= 4088:
+							break
+						_inum,_namelen = struct.unpack('>LB',data[current_offset+4:current_offset+9])
+						_name = data[current_offset+9:current_offset+9+_namelen]
+						_ftype = struct.unpack('>B',data[current_offset+9+_namelen:current_offset+9+_namelen+1])[0]
+						if _ftype == 1: # file
+							_tagno,_tblockid,_tblockoffset,_ttoffset = self.sb.de_inode(_inum)
+							try:
+								self.f.seek(_ttoffset)
+							except Exception as e:
+								break
+							_iinode = INODE(self.f.read(512))
+							if _iinode.status and _iinode.di_mode == 0:
+								print('INODE:',_inum,'FILENAME:',_name.decode(),'PAGE',offset,'OFFSET:',current_offset)
+						current_offset += 9+_namelen+1
+					
+							
+
+					continue
+					while True: # 开扫. 这样是扫不出来删除的..., 删除的不一定就放到bestfree中的.
+						#print(data[_toffset:_toffset+8],_toffset)
+						if _toffset > (4096-9) or data[_toffset:_toffset+8] == b'\x00\x00\x00\x00\x00\x00\x00\x00':
+							break
+						if _toffset in bestfree:
+							_toffset += bestfree[_toffset]
+							_startoffset = _toffset
+							continue
+						elif data[_toffset:_toffset+2] == b'\xff\xff':
+							__len = struct.unpack('>H',data[_toffset+2:_toffset+4])[0]
+							_toffset += __len
+							_startoffset = _toffset
+							continue
+						_inode,_namelen = struct.unpack('>QB',data[_toffset:_toffset+9])
+						#print(_inode)
+						_toffset += 9
+						_name = data[_toffset:_toffset+_namelen].decode()
+						_toffset += _namelen
+						_ftype = data[_toffset:_toffset+1]
+						_toffset += 1
+						_tagno,_tblockid,_tblockoffset,_ttoffset = self.sb.de_inode(_inode)
+						#print('offset',_ttoffset)
+						try:
+							self.f.seek(_ttoffset)
+						except Exception as e:
+							break
+						_iinode = INODE(self.f.read(512))
+						#print(_iinode)
+						if _iinode.status and _iinode.di_mode == 0:
+							print('INODE:',_inode,'FILENAME:',_name)
+						#elif _iinode.status:
+						#	print('INODE:',_inode,'FILENAME:',_name)
+						while True:
+							#print(_toffset,_startoffset)
+							if _toffset > (4096-8):
+								break 
+							if struct.unpack('>H',data[_toffset:_toffset+2])[0] == _startoffset:
+								_toffset += 2
+								_startoffset = _toffset
+								break
+							else:
+								_toffset += 1
+
+		elif inode.di_mode_oct[2] == '4' and inode.di_format == 3: # btr
+			# 终于到提莫的btr了. 就是btr+extent都是现成的代码, 但没写成函数, 就直接yy了
+			reader = self.read_from_bmbt(inode.ptrs,inode.level)
+			for data in reader:
+				crc,blockno,lsn = struct.unpack('>LQQ',data[4:24])
+				uuid = data[24:40].hex() 
+				owner = struct.unpack('>Q',data[40:48]) # 就是所在/属目录的inode. 
+				# bestfree (里面可能有被删除的文件名字和inode, 但Inode可能被使用了, 所以没用...)
+				bestfree = struct.unpack('>6H',data[48:60]) # XFS_DIR2_DATA_FD_COUNT = 3
+				bestfree = {bestfree[0]:bestfree[1],bestfree[2]:bestfree[3],bestfree[4]:bestfree[5]}
+				# pad
+				pad = struct.unpack('>L',data[60:64]) # 填充, 为了到64字节
+
+				# tail (我这里要找删除的, 所以全都要)
+				count,stale = struct.unpack('>LL',data[-8:])
+				# 直接扫描\xff\xff吧...
+				current_offset = 64
+				if data[:4] == b'XDD3':
+					while current_offset < 4096:#< (4096-8-8*(count+stale)):
+						_current_offset = data[current_offset:].find(b'\xff\xff')
+						if _current_offset == -1:
+							break
+						current_offset += _current_offset
+						if current_offset >= 4088:
+							break
+						_inum,_namelen = struct.unpack('>LB',data[current_offset+4:current_offset+9])
+						_name = data[current_offset+9:current_offset+9+_namelen]
+						_ftype = struct.unpack('>B',data[current_offset+9+_namelen:current_offset+9+_namelen+1])[0]
+						if _ftype == 1: # file
+							_tagno,_tblockid,_tblockoffset,_ttoffset = self.sb.de_inode(_inum)
+							try:
+								self.f.seek(_ttoffset)
+							except Exception as e:
+								break
+							_iinode = INODE(self.f.read(512))
+							if _iinode.status and _iinode.di_mode == 0:
+								print('INODE:',_inum,'FILENAME:',_name.decode(),'PAGE',offset,'OFFSET:',current_offset)
+						current_offset += 9+_namelen+1
+					
 	
 def test():
 	with open('/dev/sdb','rb') as f:
@@ -571,13 +762,36 @@ if len(argv) >= 3 and len(argv) <= 4 or len(argv) == 2:
 	if len(argv) == 4 and os.path.exists(filename):
 		print(filename,' 文件存在, 请换个名字')
 		sys.exit(2)
+	SCANDIR = False
+	inumber = 0
+	if os.path.isdir(devicename):
+		SCANDIR = True
+		with subprocess.Popen(f'ls -id {devicename}', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as f:
+			try:
+				std1 = str(f.stdout.read().rstrip(),encoding="utf-8")
+				std2 = str(f.stderr.read().rstrip(),encoding="utf-8")
+				inumber = int(std1.split()[0])
+			except Exception as e:
+				print(e)
+				sys.exit(4)
+		with subprocess.Popen(f'df -i {devicename}', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as f:
+			try:
+				std1 = str(f.stdout.read().rstrip(),encoding="utf-8")
+				std2 = str(f.stderr.read().rstrip(),encoding="utf-8")
+				devicename = std1.split('\n')[-1].split()[0]
+			except Exception as e:
+				print(e)
+				sys.exit(4)
 	ddcw = XFS(devicename)
 	if ddcw.init():
 		if ddcw.sb.versionnum & XFS_SB_VERSION_5 == 0:
 			print('只支持xfs v5')
 			sys.exit(3)
 		if len(argv) == 2:
-			ddcw.scan()
+			if SCANDIR:
+				ddcw.scan_dir(inumber)
+			else:
+				ddcw.scan()
 		elif len(argv) == 3: # indoe查看
 			ddcw.view_inode_info(inodeno)
 		else: # 文件恢复
