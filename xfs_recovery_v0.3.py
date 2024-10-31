@@ -620,7 +620,7 @@ class XFS(object):
 						if _current_offset == -1:
 							break
 						current_offset += _current_offset
-						if current_offset >= 4088:
+						if current_offset >= 4087:
 							break
 						_inum,_namelen = struct.unpack('>LB',data[current_offset+4:current_offset+9])
 						_name = data[current_offset+9:current_offset+9+_namelen]
@@ -705,7 +705,7 @@ class XFS(object):
 						if _current_offset == -1:
 							break
 						current_offset += _current_offset
-						if current_offset >= 4088:
+						if current_offset >= 4087:
 							break
 						_inum,_namelen = struct.unpack('>LB',data[current_offset+4:current_offset+9])
 						_name = data[current_offset+9:current_offset+9+_namelen]
