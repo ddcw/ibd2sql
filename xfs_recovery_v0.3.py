@@ -377,7 +377,8 @@ class INODE(object):
 		
 
 	def __str__(self):
-		return str(get_instance_attr(self))
+		#return str(get_instance_attr(self))
+		return '\n'.join([ f"{k}:{v}" for k,v in get_instance_attr(self).items() ])
 		
 
 
