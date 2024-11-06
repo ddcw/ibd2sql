@@ -55,6 +55,12 @@ python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql 
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 ```
 
+**WEB控制台查看ibd文件**
+```
+python3 ibd2sql_web.py /data/mysql_3314/mysqldata/db1/t20241104.ibd
+# 然后就使用浏览器方法: http://你的IP:8080  就可以随便点点点了
+```
+
 更多使用方法或者5.7环境请看:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
 
 

@@ -60,8 +60,16 @@ Python3 is called Python on Windows
 
 Path usage '\\' instead of '/'
 
+
+
 ```shell
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
+```
+
+**WEB CONSOLE**
+```shell
+python3 ibd2sql_web.py /PATH/your_dir/xxxx.ibd
+# and then, you can visit http://yourip:8080 to view that ibd file
 ```
 
 more usage:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
