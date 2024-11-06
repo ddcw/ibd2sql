@@ -521,6 +521,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 				button.addEventListener('click',function(){
 					query_page(item['pageid'])
 				});
+				if ('pk' in item){
+				for (const k in item.pk){
+					v += data.column[k]['name'] + ":" + item.pk[k]['key'] + ","
+				}}
 			}else{
 				button.addEventListener('click',function(){
 					showmsg(JSON.stringify(item,null,2))
@@ -529,6 +533,13 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 				//for (const k in item.field){
 				//	v += data.column[k]['name'] + ":" + item.field[k] + ","
 				//}
+
+				// 叶子节点 普通索引还是显示主键吧.
+				if ('pk' in item){
+				for (const k in item.pk){
+					v += data.column[k]['name'] + ":" + item.pk[k]['key'] + ","
+				}}
+			
 			}
 			button.innerHTML = v
 			bttitile = 'OFFSET:'+item.offset
