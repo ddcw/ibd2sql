@@ -251,6 +251,8 @@ class PAGE(page):
 # 一共4种INDEX PAGE (1.cluster:non-leaf, 2.cluster:leaf  3.secondary:non-leaf, 4.secondary:leaf)
 # pagetype是指是leaf还是non-leaf,是cluster还是secondary
 def idx_page(idxno,pageno):
+	if idxno not in ddcw.table.index:
+		return
 	idx = ddcw.table.index[idxno]
 	if pageno == 0:
 		pageno = idx['options']['root']
@@ -529,7 +531,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 				//}
 			}
 			button.innerHTML = v
-			button.title = 'OFFSET:'+item.offset
+			bttitile = 'OFFSET:'+item.offset
+			if ('pageid' in item){bttitile+='  PAGEID:'+item['pageid']}
+			button.title = bttitile
 			container.appendChild(button);
 			if (index < data.data.length -1) {
 				var svgNS = "http://www.w3.org/2000/svg";
