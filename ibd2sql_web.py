@@ -95,7 +95,7 @@ class PAGE(page):
 					if (ROW_VERSION >= col['version_added'] and (col['version_dropped'] == 0 or col['version_dropped'] > ROW_VERSION)) or (col['version_dropped'] > ROW_VERSION and ROW_VERSION >= col['version_added']):
 						null_bitmask_count += 1 if col['is_nullable'] else 0
 				else:
-					if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
+					if rheader.instant_flag and _t_COLUMN_COUNT > self._COLUMN_COUNT:
 						break
 					null_bitmask_count += 1 if col['is_nullable'] else 0
 			if not rheader.instant_flag:
@@ -291,6 +291,8 @@ def idx_page(idxno,pageno):
 		if not (idxno == 1 and rec_header.record_type == 1):
 			nullable = pg.read_rec_nullable(rec_header)
 			dd['nullable'] = nullable
+		else:
+			_ = pg._read_innodb_varsize()
 		dd['key'] = pg.read_rec_key(rec_header)
 		if idxno == 1 and rec_header.record_type == 0: # PK leaf
 			dd['trx_rollptr'] = pg.read_rec_trx_rollptr()
