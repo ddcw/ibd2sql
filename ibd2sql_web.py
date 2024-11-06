@@ -65,6 +65,9 @@ for x in ddcw.table.index:
 #print(INDEX)
 
 DDL = ddcw.get_ddl()
+if 1 not in ddcw.table.index: # 没得主键的话,就使用DB_ROW_ID
+	ddcw.table.index[1] = {'name': None, 'comment': 'DB_ROW_ID', 'idx_type': 'PRIMARY ', 'element_col': [(0, 0, 2)], 'options': {'id': 'x', 'root': '4', 'space_id': 'x', 'table_id': 'x', 'trx_id': 'x'}, 'is_visible': True, 'is_row_id':True}
+	ddcw.table.column[0] = {'name': 'DB_ROW_ID', 'is_autoincrement': False, 'type': 'int', 'isvar': False, 'size': 4, 'isbig': False, 'elements_dict': {}, 'varsize': 0, 'have_default': True, 'default': '0', 'comment': '', 'collation': 'latin1_swedish_ci', 'character_set': 'latin1', 'index_type': 'NONE', 'is_nullable': False, 'is_zerofill': False, 'is_unsigned': False, 'is_auto_increment': False, 'is_virtual': False, 'hidden': 1, 'char_length': 11, 'extra': None, 'instant': False, 'instant_value': '', 'instant_null': True, 'generation_expression': '', 'default_option': '', 'collation_id': 8, 'srs_id': 0, 'version_dropped': 0, 'version_added': 0, 'physical_pos': 1, 'ct': 'int','is_row_id':True}
 
 
 class PAGE(page):
@@ -135,6 +138,8 @@ class PAGE(page):
 
 	def read_rec_col(self,colno): # 只管读, 是否instant是read_rec_field来看的
 		col = self.table.column[colno]
+		if 'is_row_id' in col:
+			return self._read_uint(6)
 		n = col['size']
 		is_unsigned = col['is_unsigned']
 		if col['isvar']:
