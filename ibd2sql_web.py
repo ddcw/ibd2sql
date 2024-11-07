@@ -112,7 +112,7 @@ class PAGE(page):
 		null_bitmask = self._readreverse_uint(null_bitmask_len)
 		self.null_bitmask = null_bitmask
 		self.null_bitmask_offset = 0 # 当前使用的nullable
-		#print(null_bitmask_count,null_bitmask)
+		#print(null_bitmask_count,null_bitmask,self.offset,self._offset)
 		return null_bitmask
 
 	def _read_nullable(self,colno):
@@ -211,13 +211,16 @@ class PAGE(page):
 		# 解析字段的时候,分为普通字段和instant字段
 		rdata = {}
 		ROW_VERSION = self.ROW_VERSION
+		_t_COLUMN_COUNT = 2
 		for _phno,colno in self.table.column_ph:
+			if self.idxno <= 1:
+				_t_COLUMN_COUNT += 1
 			col = self.table.column[colno]
 			if colno in pkdata and not pkdata[colno]['isprefix']: # 主键读过了, 就pas
 				continue
 			if col['is_virtual']:
 				continue
-			if rheader.instant_flag and colno in rdata:
+			if rheader.instant_flag and _t_COLUMN_COUNT > self._COLUMN_COUNT :#and colno in rdata:
 				rdata[colno] = None
 				continue
 			if rheader.row_version_flag:
