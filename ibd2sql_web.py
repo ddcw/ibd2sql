@@ -112,6 +112,7 @@ class PAGE(page):
 		null_bitmask = self._readreverse_uint(null_bitmask_len)
 		self.null_bitmask = null_bitmask
 		self.null_bitmask_offset = 0 # 当前使用的nullable
+		#print(null_bitmask_count,null_bitmask)
 		return null_bitmask
 
 	def _read_nullable(self,colno):
@@ -216,7 +217,7 @@ class PAGE(page):
 				continue
 			if col['is_virtual']:
 				continue
-			if rheader.instant_flag:
+			if rheader.instant_flag and colno in rdata:
 				rdata[colno] = None
 				continue
 			if rheader.row_version_flag:
@@ -293,11 +294,10 @@ def idx_page(idxno,pageno):
 			'record_type':rec_header.record_type,
 			'next_record':rec_header.next_record,
 		}
-		if not (idxno == 1 and rec_header.record_type == 1):
-			nullable = pg.read_rec_nullable(rec_header)
-			dd['nullable'] = nullable
-		else:
-			_ = pg._read_innodb_varsize()
+		#if not (idxno == 1 and rec_header.record_type == 1):
+		nullable = pg.read_rec_nullable(rec_header)
+		dd['nullable'] = nullable
+		#int((ddcw.table.null_bitmask_count+7)/8)
 		dd['key'] = pg.read_rec_key(rec_header)
 		if idxno == 1 and rec_header.record_type == 0: # PK leaf
 			dd['trx_rollptr'] = pg.read_rec_trx_rollptr()
@@ -464,6 +464,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 		background-color:#90EE90;
 	}
 	.record_type1:hover{font-size:22px;}
+	.bg_red{background-color:red}
 </style>
 <script>
 	console.log('https://github.com/ddcw/ibd2sql')
@@ -520,6 +521,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 		data.data.forEach(function(item, index){
 			var button = document.createElement('button');
 			button.classList.add("record_type" + item['rec_header']['record_type'])
+			if ('rec_header' in item){if ('deleted' in item['rec_header']){
+			if (item['rec_header']['deleted']){
+				button.classList.add(".bg_red")
+			}}}
 			v = ""
 			for (const k in item.key){
 				v += data.column[k]['name'] + ":" + item.key[k]['key'] + ","
