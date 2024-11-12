@@ -6,6 +6,7 @@ from ibd2sql.innodb_page_spaceORxdes import *
 from ibd2sql.innodb_page_inode import *
 from ibd2sql.innodb_page_index import *
 from ibd2sql import lz4
+from ibd2sql import AES
 import sys
 
 
@@ -39,6 +40,11 @@ class ibd2sql(object):
 		self.PAGE_COUNT = -1
 		self.PAGE_SKIP = -1
 		self.MYSQL5 = False # 标记是否为MYSQL 5.7的, 其实没必要的, 只是我懒得去看以前的shit了... 那就堆shit吧 -_-
+
+		# 加密相关的
+		self.ENCRYPTED = False
+		self.KEY = b'\x00'*32
+		self.IV = b'\x00'*16
 
 
 	def _init_table_name(self):
@@ -76,6 +82,9 @@ class ibd2sql(object):
 				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + lz4.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1],FIL_PAGE_ORIGINAL_SIZE_V1)
 			else:
 				pass
+		elif data[24:26] == b'\x00\x0f': # 15: 加密页
+			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
+			data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + AES.aes_cbc256_decrypt(self.KEY,data[38:-10],self.IV) + AES.aes_cbc256_decrypt(self.KEY,data[-32:],self.IV)[-10:]
 		return data
 
 	def _init_sql_prefix(self):
