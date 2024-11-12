@@ -110,6 +110,8 @@ FILENAME 目标文件, 即要解析的ibd文件
 
 `--mysql5` 如果是mysql 5.6/5.7 除了指定`--sdi-table`选项外, 还应指定这个选项, 方便ibd2sql失败为mysql5的数据文件.
 
+`--keyring-file` 指定keyring file文件(如果ibd文件加密了的话,就使用该选项)
+
 
 
 # 使用例子
