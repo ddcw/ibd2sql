@@ -38,9 +38,11 @@ class decimal_buff(object):
 		self.max_size = len(bdata)
 		self.forward = forward
 		self.offset = 0
+		self.count = 0
 		
 	def read(self,):
 		#n = 0
+		self.count += 1
 		if self.max_size - self.offset >= 4:
 			n = 4
 		#elif self.max_size - self.offset >= 2:
@@ -57,7 +59,7 @@ class decimal_buff(object):
 			else:
 				data = self.bdata[-self.offset-n:-self.offset]
 		self.offset += n
-		return data
+		return data,self.offset == self.max_size
 
 def _DEBUG(*args):
 	pass
@@ -231,7 +233,7 @@ Example:
 		t1data = []
 		lastbytes1=0
 		while True:
-			data = t1.read()
+			data,isend = t1.read()
 			if data == b'':
 				break
 			lastbytes1 = len(data)
@@ -241,11 +243,23 @@ Example:
 		t2 = decimal_buff(bdata[p1:],True)
 		t2data = []
 		while True:
-			data = t2.read()
+			data,isend = t2.read()
 			if data == b'':
 				break
 			_data = int.from_bytes(data,'big',signed=signed)
 			_data += 1 if signed else 0
+			# 小数部分存在填充的判断(issue 44)
+			if isend:
+				if t2.count == 1:
+					_data =  str(_data).zfill(extra[2][1])
+				else:
+					_data =  str(_data).zfill(extra[2][1]-9*t2.count)
+			else:
+				if _data < 0:
+					_data = "-" + str(_data)[1:].zfill(9)
+				else:
+					_data =  str(_data).zfill(9)
+				
 			t2data.append(_data)
 		t1data.reverse()
 		if signed and len(t1data) > 1:

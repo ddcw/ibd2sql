@@ -33,3 +33,4 @@
 11. instant相关BUG和vector的支持
 12. varchar <=255 时使用1bytes存储大小
 13. instant nullable计算方式.
+14. decimal小数部分以0开头时,未作填充
