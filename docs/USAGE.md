@@ -268,3 +268,12 @@ CREATE TABLE IF NOT EXISTS `db1`.`sbtest1234`(
 
 
 
+# 修改lower_case_table_names 参数
+```shell
+# 查看
+python3 modify_lower_case_table_names.py /data/mysql_3314/mysqldata/mysql.ibd
+
+# 修改 lower_case_table_names为1 并保存到/tmp/new_mysql.ibd
+python3 modify_lower_case_table_names.py /data/mysql_3314/mysqldata/mysql.ibd /tmp/new_mysql.ibd 1
+# 然后就是停库并更换mysql.ibd文件, 并启动(同时得修改参数文件里面的值, 不然会报错不一致... MY-011087)
+```
