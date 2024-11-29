@@ -79,6 +79,7 @@ if len(argv) == 4: # 修改, 暂时不支持
 				cb = struct.pack('>L',(c1^c2)&(2**32-1))
 				data = cb + data[4:16384-8] + cb + data[16384-4:]
 			f2.write(data)
+	print(f'set lower_case_table_names={newvalue} into new file({newfilename}) finish.')
 
 else: # 查看
 	print('lower_case_table_names:',aadict['LCTN'])
