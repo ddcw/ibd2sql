@@ -5,6 +5,16 @@ import struct
 import binascii
 import json
 #from ibd2sql.innodb_type import innodb_type_decode
+
+# 字符集的支持
+from ibd2sql import armscii8
+from ibd2sql import dec8
+from ibd2sql import geostd8
+from ibd2sql import hp8
+from ibd2sql import keybcs2
+from ibd2sql import swe7
+from ibd2sql import tis620
+
 FIL_PAGE_DATA_END = 8
 PAGE_NEW_INFIMUM = 99
 PAGE_NEW_SUPREMUM = 112
@@ -29,6 +39,92 @@ def char_decode(data,col):
 		return data.decode('utf-16-le')
 	elif col['character_set'] == 'utf32':
 		return data.decode('utf-32-be')
+	elif col['character_set'] == 'big5':
+		return data.decode('big5')
+	elif col['character_set'] == 'binary':
+		return '0x'+data.hex()
+	elif col['character_set'] == 'cp1250':
+		return data.decode('cp1250')
+	elif col['character_set'] == 'cp1251':
+		return data.decode('cp1251')
+	elif col['character_set'] == 'cp1256':
+		return data.decode('cp1256')
+	elif col['character_set'] == 'cp1257':
+		return data.decode('cp1257')
+	elif col['character_set'] == 'cp850':
+		return data.decode('cp850')
+	elif col['character_set'] == 'cp852':
+		return data.decode('cp852')
+	elif col['character_set'] == 'cp866':
+		return data.decode('cp866')
+	elif col['character_set'] == 'cp932':
+		return data.decode('cp932')
+	elif col['character_set'] in ['eucjpms','ujis']:
+		return data.decode('euc_jp')
+	elif col['character_set'] == 'gb18030':
+		return data.decode('gb18030')
+	elif col['character_set'] == 'gb2312':
+		return data.decode('gb2312')
+	elif col['character_set'] == 'gbk':
+		return data.decode('gbk')
+	elif col['character_set'] == 'greek':
+		return data.decode('iso8859_7')
+	elif col['character_set'] == 'hebrew':
+		return data.decode('iso8859_8')
+	elif col['character_set'] == 'koi8r':
+		return data.decode('koi8_r')
+	elif col['character_set'] == 'koi8u':
+		return data.decode('koi8_u')
+	elif col['character_set'] == 'latin1':
+		return data.decode('latin1')
+	elif col['character_set'] == 'latin2':
+		#return data.decode('latin2')
+		return data.decode('iso8859_2')
+	elif col['character_set'] == 'latin5':
+		return data.decode('iso8859_9')
+	elif col['character_set'] == 'latin7':
+		return data.decode('iso8859_13')
+	elif col['character_set'] == 'macce':
+		return data.decode('mac_latin2')
+	elif col['character_set'] == 'macroman':
+		return data.decode('mac_roman')
+	elif col['character_set'] == 'sjis':
+		return data.decode('shift_jis')
+	elif col['character_set'] == 'dec8':
+		_t = b''
+		for x in data:
+			_t += dec8.DD_DEC8[x]
+		return _t.decode()
+	elif col['character_set'] == 'geostd8':
+		_t = b''
+		for x in data:
+			_t += geostd8.DD_GEOSTD8[x]
+		return _t.decode()
+	elif col['character_set'] == 'hp8':
+		_t = b''
+		for x in data:
+			_t += hp8.DD_HP8[x]
+		return _t.decode()
+	elif col['character_set'] == 'keybcs2':
+		_t = b''
+		for x in data:
+			_t += keybcs2.DD_KEYBCS2[x]
+		return _t.decode()
+	elif col['character_set'] == 'armscii8':
+		_t = b''
+		for x in data:
+			_t += armscii8.DD_ARMSCII8[x]
+		return _t.decode()
+	elif col['character_set'] == 'swe7':
+		_t = b''
+		for x in data:
+			_t += swe7.DD_SWE7[x]
+		return _t.decode()
+	elif col['character_set'] == 'tis620':
+		_t = b''
+		for x in data:
+			_t += tis620.DD_TIS620[x]
+		return _t.decode()
 	else:
 		return data.decode()
 
