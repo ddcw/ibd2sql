@@ -309,6 +309,8 @@ if __name__ == "__main__":
 		PRIMARRY_KEY.append([x['ordinal_position'],isprefix])
 	# 获取主键的INDEXID, inode的第一个page就是,但太麻烦了, 所以我们从PK ROOT PAGE获取. 但是对于5.7的话,就可能得人工指定了.
 	rootpagebdata = f.read(int(dict([ x.split('=') for x in  dd['indexes'][0]['se_private_data'].split(';')[:-1] ])['root']))
+	if len(ARGV) == 3:
+		rootpagebdata = f.read(int( struct.unpack('>L',f.read(2)[50:50+192][64:68])[0] )) # 还是解析inode吧...
 	INDEXID = struct.unpack('>L',rootpagebdata[70:74])[0]
 	INDEXID = struct.pack('>L',INDEXID) # 转为二进制,方便比较, 上面是为了获取.
 	for _pageno in range(int(os.stat(filename).st_size/16384)-2):
