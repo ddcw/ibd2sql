@@ -81,6 +81,8 @@ class TABLE(object):
 	def _column(self):
 		ddl = ""
 		for colid in self.column:
+			if self.column[colid]['name'] == 'FTS_DOC_ID':
+				continue
 			if self.column[colid]['version_dropped'] > 0:
 				continue
 			ddl += self._ci
@@ -295,6 +297,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 					if self.table.column[x['column_opx']+1]['char_length'] > x['length']:
 						prefix_key = int(x['length']/_varlen)
 				xorder = x['order'] if 'order' in x else 0
+				if self.table.column[x['column_opx']+1]['ct'] == 'geom':
+					prefix_key = 0
 				element_col.append((x['column_opx']+1,prefix_key,xorder)) # order 是否为降序索引 
 				#/*column[ordinal_position] 从1开始计数,   idx['column_opx'] 从0开始计*/
 			if len(element_col) == 0:
@@ -305,6 +309,10 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 			elif idx['type'] == 2:
 				idx_type = 'UNIQUE '
 				self.table.uindex_id.append(idx['ordinal_position'])
+			elif idx['type'] == 4:
+				idx_type = 'FULLTEXT '
+			elif idx['type'] == 5:
+				idx_type = 'SPATIAL '
 			else:
 				idx_type = ''
 			name = idx['name'] if idx['name'] != "PRIMARY" else None

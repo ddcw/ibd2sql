@@ -92,6 +92,10 @@ class ibd2sql(object):
 		#self.SQL_PREFIX = f"{ 'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}{'(`'+'`,`'.join([ self.table.column[x]['name'] for x in self.table.column ]) + '`)' if self.COMPLETE_SQL else ''} VALUES "
 		SQL_PREFIX = f"{'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}("
 		for x in self.table.column:
+			if 'hidden' in self.table.column[x] and self.table.column[x]['hidden'] > 1:
+				continue
+			if self.table.column[x]['generation_expression'] != "":
+				continue
 			if self.table.column[x]['is_virtual'] or not self.COMPLETE_SQL or self.table.column[x]['version_dropped'] > 0:
 				continue
 			else:
@@ -315,6 +319,10 @@ class ibd2sql(object):
 		"""
 		sql = '('
 		for colno in self.table.column:
+			if 'hidden' in self.table.column[colno] and self.table.column[colno]['hidden'] > 1:
+				continue
+			if self.table.column[colno]['generation_expression'] != "":
+				continue
 			if self.table.column[colno]['is_virtual']:
 				continue
 			if self.table.column[colno]['version_dropped'] > 0:
@@ -322,6 +330,8 @@ class ibd2sql(object):
 			data = row[colno]
 			if data is None:
 				sql  = f"{sql}NULL, "
+			elif self.table.column[colno]['type'].startswith('varbinary(') or self.table.column[colno]['type'] in ['tinyblob','blob','mediumblob','longblob']:
+				sql  = f"{sql}{data}, "
 			elif self.table.column[colno]['ct'] in ['tinyint','smallint','int','float','double','bigint','mediumint','year','decimal','vector'] :
 				sql  = f"{sql}{data}, "
 			elif (not self.SET) and (self.table.column[colno]['ct'] in ['enum','set']):

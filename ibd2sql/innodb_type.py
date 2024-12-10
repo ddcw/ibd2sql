@@ -22,7 +22,7 @@ INNODB_TYPE = {
 	21:'decimal',
 	22:'enum',
 	23:'set',
-	24:'tinytext', #tinyblob
+	24:'tinyblob', #tinytext
 	25:'mediumblob', #mediumtext
 	26:'longblob', #longtext
 	27:'blob', #text
@@ -131,6 +131,7 @@ isvar: isvar?
 		size = int((esize+7)/8) #多个值, 每个值一个bit.  MAX:8bytes=64bit
 	elif ct == "tinytext":
 		varsize = 1
+		isvar = True
 	elif ct == "mediumblob":
 		size = 20
 		isvar = True

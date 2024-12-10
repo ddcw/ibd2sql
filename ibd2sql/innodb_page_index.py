@@ -332,9 +332,10 @@ class ROW(page):
 			data = self._read_uint(n)
 		elif col['ct'] == 'binary':
 			data = self._read_uint(n)#.decode()
-		elif col['ct'] == 'tinytext':
+		elif col['ct'] == 'tinyblob':
 			s = int.from_bytes(self.readreverse(1),'big')
-			data = self.read(s).decode()
+			#data = self.read(s).decode()
+			data = '0x'+self.read(s).hex()
 		else:
 			self.debug("WARNING Unknown col:",col)
 			data = self.read(n)
