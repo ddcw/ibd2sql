@@ -103,6 +103,7 @@ class TABLE(object):
 			else:
 				ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
 			ddl += f"{' AUTO_INCREMENT' if col['is_auto_increment'] else ''}" #auto_increment
+			ddl += f"{' ON UPDATE '+col['update_option'] if 'update_option' in col and col['update_option']!='' else ''}"
 			ddl += f"{' COMMENT '+repr(col['comment']) if col['comment'] != '' else '' }" #comment
 			#COLUMN_FORMAT 
 			#STORAGE 
@@ -266,6 +267,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'version_dropped':version_dropped,
 				'version_added':version_added,
 				'physical_pos':physical_pos,
+				'update_option':col['update_option'] if 'update_option' in col else '',
 				'ct':ct #属于类型
 			}
 		column_ph = []
