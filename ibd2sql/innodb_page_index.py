@@ -436,6 +436,9 @@ class ROW(page):
 				# 1-2字节表示字段数量(含row_id,trx,rollptr), 
 				self.debug(f"_COLUMN_COUNT:{_COLUMN_COUNT}")
 
+			if self.table.mysqld_version_id >= 80030 and rheader.row_version_flag > 0:
+				_COLUMN_COUNT = self._read_innodb_varsize() # issue 47 ?
+
 			#NULL
 			null_bitmask = 0
 			null_bitmask_count = 0
