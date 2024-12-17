@@ -59,7 +59,7 @@ isvar: isvar?
 	if ct == "tinyint":
 		size = 1
 	elif col['column_type_utf8'][:6] == 'binary':
-		size = int(re.compile('binary\((.+)\)').findall(col['column_type_utf8'],)[0])
+		size = int(re.compile(r'binary\((.+)\)').findall(col['column_type_utf8'],)[0])
 		ct = 'binary'
 	elif ct == "smallint":
 		size = 2
@@ -67,7 +67,7 @@ isvar: isvar?
 		size = 4
 	elif ct == "float":
 		try:
-			ext = int(re.compile('float\((.+)\)').findall(col['column_type_utf8'],)[0])
+			ext = int(re.compile(r'float\((.+)\)').findall(col['column_type_utf8'],)[0])
 		except:
 			ext = 0
 			
@@ -86,31 +86,31 @@ isvar: isvar?
 		isvar = True
 	elif ct == "bit":
 		try:
-			ext = int(re.compile('bit\((.+)\)').findall(col['column_type_utf8'],)[0])
+			ext = int(re.compile(r'bit\((.+)\)').findall(col['column_type_utf8'],)[0])
 		except:
 			ext = 0
 		size = int((ext+7)/8)
 	elif ct == "timestamp":
 		try:
-			ext = int(re.compile('timestamp\((.+)\)').findall(col['column_type_utf8'],)[0])
+			ext = int(re.compile(r'timestamp\((.+)\)').findall(col['column_type_utf8'],)[0])
 		except:
 			ext = 0
 		size = 4+int((ext+1)/2)
 	elif ct == "datetime":
 		try:
-			ext = ext = int(re.compile('datetime\((.+)\)').findall(col['column_type_utf8'],)[0])
+			ext = ext = int(re.compile(r'datetime\((.+)\)').findall(col['column_type_utf8'],)[0])
 		except:
 			ext = 0
 		size = 5+int((ext+1)/2)
 	elif ct == "time":
 		try:
-			ext = int(re.compile('time\((.+)\)').findall(col['column_type_utf8'],)[0])
+			ext = int(re.compile(r'time\((.+)\)').findall(col['column_type_utf8'],)[0])
 		except:
 			ext = 0
 		size = 3+int((ext+1)/2)
 	elif ct == "decimal":
 		try:
-			total_digits, decimal_digits = re.compile('decimal\((.+)\)').findall(col['column_type_utf8'],)[0].split(',')
+			total_digits, decimal_digits = re.compile(r'decimal\((.+)\)').findall(col['column_type_utf8'],)[0].split(',')
 			total_digits = int(total_digits)
 			decimal_digits = int(decimal_digits)
 			integer_p1_count = int((total_digits - decimal_digits)/9) #
@@ -146,7 +146,7 @@ isvar: isvar?
 		isbig = True
 	elif ct == "char":
 		isvar = True #innodb_default_row_format != COMPACT
-		size = int(re.compile('char\((.+)\)').findall(col['column_type_utf8'],)[0]) # issue 9
+		size = int(re.compile(r'char\((.+)\)').findall(col['column_type_utf8'],)[0]) # issue 9
 	elif ct == "json":
 		size = 20
 		isvar = True
