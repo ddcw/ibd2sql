@@ -436,8 +436,8 @@ class ROW(page):
 				# 1-2字节表示字段数量(含row_id,trx,rollptr), 
 				self.debug(f"_COLUMN_COUNT:{_COLUMN_COUNT}")
 
-			if self.table.mysqld_version_id >= 80030 and rheader.row_version_flag > 0:
-				_COLUMN_COUNT = self._read_innodb_varsize() # issue 47 ?
+			#if self.table.mysqld_version_id >= 80030 and rheader.row_version_flag > 0:
+			#	_COLUMN_COUNT = self._read_innodb_varsize() # issue 47 ?
 
 			#NULL
 			null_bitmask = 0
@@ -484,7 +484,7 @@ class ROW(page):
 					if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
 						break
 					null_bitmask_count += 1 if col['is_nullable'] else 0
-			if not rheader.instant_flag:
+			if not rheader.instant:
 				null_bitmask_count = self.table.null_bitmask_count
 				
 
@@ -543,7 +543,7 @@ class ROW(page):
 				col = self.table.column[colno]
 				if col['is_virtual']:
 					continue
-				if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
+				if rheader.instant_flag and _t_COLUMN_COUNT >= _COLUMN_COUNT:
 					_data[colno],_expage[colno] = None,None
 					continue
 				self.debug(f"\tNAME: {col['name']}  VERSION_ADDED:{col['version_added']}  VERSION_DROPED:{col['version_dropped']} COL_INSTANT:{col['instant']} ROW VERSION:{ROW_VERSION}")
