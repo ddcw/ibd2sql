@@ -9,6 +9,7 @@ import sys
 import os
 import struct
 from ibd2sql import CRC32C
+from ibd2sql import frm2sdi
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'ibd2sql/')))
 
 def _argparse():
@@ -125,12 +126,20 @@ if __name__ == '__main__':
 			ddcw.KEY = key
 			ddcw.IV = iv
 			
+	ddcw.MYSQL5 = parser.MYSQL5
+	# 自动判断是否为mysql5环境
+	if os.path.exists(filename[:-4]+'.frm'):
+		AUTOFRM = True
+		FRMFILENAME = filename[:-4]+'.frm'
+		ddcw.MYSQL5 = True
+	else:
+		AUTOFRM = False
+
 	if parser.DEBUG:
 		ddcw.DEBUG = True
 	if parser.SDI_TABLE:
 		ddcw.IS_PARTITION = True
 
-	ddcw.MYSQL5 = parser.MYSQL5
 
 	ddcw.COMPLETE_SQL = True if parser.COMPLETE_INSERT else False
 
@@ -158,6 +167,12 @@ if __name__ == '__main__':
 		ddcw.table = aa.table
 		ddcw._init_table_name()
 		aa.close()
+	elif AUTOFRM:
+		ddcw.IS_PARTITION = True
+		from ibd2sql.innodb_page_sdi import *
+		aa = frm2sdi.MYSQLFRM(FRMFILENAME).get_sdi_page()
+		ddcw.table = sdi(aa).table
+		ddcw._init_table_name()
 
 
 	if parser.DEBUG_FILE is not None:
