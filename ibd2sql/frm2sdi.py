@@ -390,6 +390,7 @@ class MYSQLFRM(object):
 		# 字段信息
 		COLUMN = []
 		#self.default_value_null_bitmask = self.DEFAULT_VALUE.read(1)
+		null_bitmask_adds = -1 if self.pack_record == 1 else 0
 		for i in range(len(self.COLUMNS['field'])):
 			col = self.COLUMNS['field'][i]
 			field_type = COL_TYPE[col['metadata']['field_type']][2]
@@ -424,8 +425,12 @@ class MYSQLFRM(object):
 
 			# 默认值的判断
 			has_no_default = False
-			null_bitmask_adds = 0 if self.pack_record == 1 else 1
-			default_value_null = False if self.default_value_null_bitmask&(1<<(i+null_bitmask_adds)) == 0 else True
+			#null_bitmask_adds = 0 if self.pack_record == 1 else 1
+			if col['metadata']['pack_flag']&(2**14)>0 or col['metadata']['unireg_type'] == 15:
+				default_value_null = True
+			else:
+				null_bitmask_adds += 1
+				default_value_null = False if self.default_value_null_bitmask&(1<<(null_bitmask_adds)) == 0 else True
 			default_value = b''
 			default_value_utf8 = ''
 			if type_default_size > 0 or field_type in [21,22,23]: # 定长类型的默认值
