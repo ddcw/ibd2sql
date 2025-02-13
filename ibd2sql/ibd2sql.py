@@ -136,7 +136,7 @@ class ibd2sql(object):
 		else:
 			self.debug('ANALYZE SDI PAGE')
 			self.PAGE_ID = sdino
-			self.sdi = sdi(self.read(),debug=self.debug) #sdi页
+			self.sdi = sdi(self.read(),debug=self.debug,filename=self.FILENAME) #sdi页
 			if not self.sdi:
 				self.debug("ANALYZE SDI PAGE FAILED (maybe page is not 17853), will exit 2")
 				sys.exit(2)

@@ -4,6 +4,7 @@ import struct,json,zlib
 from ibd2sql.innodb_type import innodb_type_isvar
 import base64
 from ibd2sql.partition import subpartition
+import sys
 
 
 class TABLE(object):
@@ -167,6 +168,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		if self.FIL_PAGE_TYPE != 17853:
 			return None
 		self.page_name = 'SDI'
+		self.filename = kwargs['filename']
 
 		self.HAS_IF_NOT_EXISTS = True
 		self.table = TABLE() #初始化一个表对象
@@ -419,7 +421,23 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		dtrx = int.from_bytes(self.bdata[offset+12:offset+12+6],'big')
 		dundo = int.from_bytes(self.bdata[offset+12+6:offset+12+6+7],'big')
 		dunzip_len,dzip_len = struct.unpack('>LL',self.bdata[offset+33-8:offset+33])
-		unzbdata = zlib.decompress(self.bdata[offset+33:offset+33+dzip_len])
+		if dzip_len + offset > len(self.bdata): # 列太多
+			unzbdata = b''
+			SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.bdata[offset+33:offset+33+20])
+			if REAL_SIZE != dzip_len:
+				print('REAL_SIZE != dzip_len')
+				sys.exit(1)
+			with open(self.filename,'rb') as f:
+				while True:
+					f.seek(PAGENO*16384,0)
+					data = f.read(16384)
+					REAL_SIZE,PAGENO = struct.unpack('>LL',data[38:46])
+					unzbdata += data[46:-8]
+					if PAGENO == 4294967295:
+						break
+			unzbdata = zlib.decompress(unzbdata)
+		else:
+			unzbdata = zlib.decompress(self.bdata[offset+33:offset+33+dzip_len])
 		dic_info = json.loads(unzbdata.decode())
 		return dic_info if len(unzbdata) == dunzip_len else {}
 
