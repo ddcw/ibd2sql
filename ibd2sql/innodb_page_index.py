@@ -5,6 +5,16 @@ import struct
 import binascii
 import json
 #from ibd2sql.innodb_type import innodb_type_decode
+
+# 字符集的支持
+from ibd2sql import armscii8
+from ibd2sql import dec8
+from ibd2sql import geostd8
+from ibd2sql import hp8
+from ibd2sql import keybcs2
+from ibd2sql import swe7
+from ibd2sql import tis620
+
 FIL_PAGE_DATA_END = 8
 PAGE_NEW_INFIMUM = 99
 PAGE_NEW_SUPREMUM = 112
@@ -18,13 +28,113 @@ def page_directory(bdata):
 			break
 	return page_directorys
 
+# 参考: https://dev.mysql.com/doc/refman/8.0/en/charset-unicode.html
+#       https://docs.python.org/3/library/codecs.html#standard-encodings
+def char_decode(data,col):
+	if col['character_set'] == 'ucs2':
+		return data.decode('utf-16-be')
+	elif col['character_set'] == 'utf16': # utf16默认是大端字节序
+		return data.decode('utf-16-be')
+	elif col['character_set'] == 'utf16le':
+		return data.decode('utf-16-le')
+	elif col['character_set'] == 'utf32':
+		return data.decode('utf-32-be')
+	elif col['character_set'] == 'big5':
+		return data.decode('big5')
+	elif col['character_set'] == 'binary':
+		return '0x'+data.hex()
+	elif col['character_set'] == 'cp1250':
+		return data.decode('cp1250')
+	elif col['character_set'] == 'cp1251':
+		return data.decode('cp1251')
+	elif col['character_set'] == 'cp1256':
+		return data.decode('cp1256')
+	elif col['character_set'] == 'cp1257':
+		return data.decode('cp1257')
+	elif col['character_set'] == 'cp850':
+		return data.decode('cp850')
+	elif col['character_set'] == 'cp852':
+		return data.decode('cp852')
+	elif col['character_set'] == 'cp866':
+		return data.decode('cp866')
+	elif col['character_set'] == 'cp932':
+		return data.decode('cp932')
+	elif col['character_set'] in ['eucjpms','ujis']:
+		return data.decode('euc_jp')
+	elif col['character_set'] == 'gb18030':
+		return data.decode('gb18030')
+	elif col['character_set'] == 'gb2312':
+		return data.decode('gb2312')
+	elif col['character_set'] == 'gbk':
+		return data.decode('gbk')
+	elif col['character_set'] == 'greek':
+		return data.decode('iso8859_7')
+	elif col['character_set'] == 'hebrew':
+		return data.decode('iso8859_8')
+	elif col['character_set'] == 'koi8r':
+		return data.decode('koi8_r')
+	elif col['character_set'] == 'koi8u':
+		return data.decode('koi8_u')
+	elif col['character_set'] == 'latin1':
+		return data.decode('latin1')
+	elif col['character_set'] == 'latin2':
+		#return data.decode('latin2')
+		return data.decode('iso8859_2')
+	elif col['character_set'] == 'latin5':
+		return data.decode('iso8859_9')
+	elif col['character_set'] == 'latin7':
+		return data.decode('iso8859_13')
+	elif col['character_set'] == 'macce':
+		return data.decode('mac_latin2')
+	elif col['character_set'] == 'macroman':
+		return data.decode('mac_roman')
+	elif col['character_set'] == 'sjis':
+		return data.decode('shift_jis')
+	elif col['character_set'] == 'dec8':
+		_t = b''
+		for x in data:
+			_t += dec8.DD_DEC8[x]
+		return _t.decode()
+	elif col['character_set'] == 'geostd8':
+		_t = b''
+		for x in data:
+			_t += geostd8.DD_GEOSTD8[x]
+		return _t.decode()
+	elif col['character_set'] == 'hp8':
+		_t = b''
+		for x in data:
+			_t += hp8.DD_HP8[x]
+		return _t.decode()
+	elif col['character_set'] == 'keybcs2':
+		_t = b''
+		for x in data:
+			_t += keybcs2.DD_KEYBCS2[x]
+		return _t.decode()
+	elif col['character_set'] == 'armscii8':
+		_t = b''
+		for x in data:
+			_t += armscii8.DD_ARMSCII8[x]
+		return _t.decode()
+	elif col['character_set'] == 'swe7':
+		_t = b''
+		for x in data:
+			_t += swe7.DD_SWE7[x]
+		return _t.decode()
+	elif col['character_set'] == 'tis620':
+		_t = b''
+		for x in data:
+			_t += tis620.DD_TIS620[x]
+		return _t.decode()
+	else:
+		return data.decode()
+
 
 class record_header(object):
 	"""
 --------------------------------------------------------------------------------------------------------
 |          NO USE         |     (1 bit)     |    INSTANT FLAG                                          |
 --------------------------------------------------------------------------------------------------------
-|          NO USE         |     (1 bit)     |    没使用                                                |
+|          NO USE         |     (1 bit)     |    ROW VERSION FLAG                                      |
 --------------------------------------------------------------------------------------------------------
 |          deleted        |     (1 bit)     |    表示是否被标记为删除                                  |
 --------------------------------------------------------------------------------------------------------
@@ -145,7 +255,7 @@ class ROW(page):
 		_bf_offset = self.offset
 		if col['isbig']:
 			#data = self.read_innodb_big()
-			size = self._read_innodb_varsize()
+			size = self._read_innodb_varsize(col['char_length'])
 			if size + self.offset > 16384:
 				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 				self.debug(f"SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
@@ -162,7 +272,8 @@ class ROW(page):
 				data = '0x'+_tdata.hex()
 			else: 
 				try:
-					data = _tdata.decode()
+					#data = _tdata.decode()
+					data = char_decode(_tdata,col)
 				except Exception as e:
 					self.debug(f"BLOB ERROR {e}")
 					data = '0x'+_tdata.hex()
@@ -170,7 +281,7 @@ class ROW(page):
 			if col['character_set'] == "ascii" and col['ct'] == "char": #不用记录大小, 直接读 issue 9
 				_tdata = self.read(col['size']) 
 			else:
-				size = self._read_innodb_varsize()
+				size = self._read_innodb_varsize(col['char_length'])
 				if size + self.offset > 16384:
 					SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 					self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
@@ -178,7 +289,8 @@ class ROW(page):
 				else:
 					_tdata = self.read(size)
 			try:
-				data = _tdata.decode().rstrip()  # 直接去掉空字符吧
+				#data = _tdata.decode().rstrip()  # 直接去掉空字符吧
+				data = char_decode(_tdata,col)
 			except Exception as e:
 				self.debug(f"BLOB ERROR {e}")
 				data = '0x'+_tdata.hex()
@@ -220,9 +332,10 @@ class ROW(page):
 			data = self._read_uint(n)
 		elif col['ct'] == 'binary':
 			data = self._read_uint(n)#.decode()
-		elif col['ct'] == 'tinytext':
+		elif col['ct'] == 'tinyblob':
 			s = int.from_bytes(self.readreverse(1),'big')
-			data = self.read(s).decode()
+			#data = self.read(s).decode()
+			data = '0x'+self.read(s).hex()
 		else:
 			self.debug("WARNING Unknown col:",col)
 			data = self.read(n)
@@ -323,6 +436,9 @@ class ROW(page):
 				# 1-2字节表示字段数量(含row_id,trx,rollptr), 
 				self.debug(f"_COLUMN_COUNT:{_COLUMN_COUNT}")
 
+			#if self.table.mysqld_version_id >= 80030 and rheader.row_version_flag > 0:
+			#	_COLUMN_COUNT = self._read_innodb_varsize() # issue 47 ?
+
 			#NULL
 			null_bitmask = 0
 			null_bitmask_count = 0
@@ -357,13 +473,19 @@ class ROW(page):
 		#				null_bitmask_count += 1
 
 			null_bitmask_count = 0
+			_t_COLUMN_COUNT = 2
 			for _phno,colno in self.table.column_ph:
+				_t_COLUMN_COUNT += 1
 				col = self.table.column[colno]
 				if rheader.row_version_flag:
 					if (ROW_VERSION >= col['version_added'] and (col['version_dropped'] == 0 or col['version_dropped'] > ROW_VERSION)) or (col['version_dropped'] > ROW_VERSION and ROW_VERSION >= col['version_added']):
 						null_bitmask_count += 1 if col['is_nullable'] else 0
 				else:
+					if rheader.instant_flag and _t_COLUMN_COUNT > _COLUMN_COUNT:
+						break
 					null_bitmask_count += 1 if col['is_nullable'] else 0
+			if not rheader.instant:
+				null_bitmask_count = self.table.null_bitmask_count
 				
 
 			#print(null_bitmask_count)
@@ -413,10 +535,17 @@ class ROW(page):
 			self.debug(f"INSTANT FLAG     : {rheader.instant_flag}")
 			self.debug(f"ROW VERSION FLAG : {rheader.row_version_flag}")
 			_nullable_count = -1
+			_t_COLUMN_COUNT = 2
 			for _phno,colno in self.table.column_ph:
+				_t_COLUMN_COUNT += 1
 				if colno in _data: # KEY
 					continue
 				col = self.table.column[colno]
+				if col['is_virtual']:
+					continue
+				if rheader.instant_flag and _t_COLUMN_COUNT >= _COLUMN_COUNT:
+					_data[colno],_expage[colno] = None,None
+					continue
 				self.debug(f"\tNAME: {col['name']}  VERSION_ADDED:{col['version_added']}  VERSION_DROPED:{col['version_dropped']} COL_INSTANT:{col['instant']} ROW VERSION:{ROW_VERSION}")
 				if rheader.row_version_flag: # >=8.0.29 的online ddl
 					if (ROW_VERSION >= col['version_added'] and (col['version_dropped'] == 0 or col['version_dropped'] > ROW_VERSION)) or (col['version_dropped'] > ROW_VERSION and ROW_VERSION >= col['version_added']):

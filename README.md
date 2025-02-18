@@ -24,7 +24,7 @@ Useful: parse data with mark of deleted (--delete).
 
 # DOWNLOAD & USAGE
 
-v1.5 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+v1.7 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz)
 
 
 
@@ -58,10 +58,18 @@ python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl > xxx.sql
 
 Python3 is called Python on Windows
 
-Path usage '\' instead of '/'
+Path usage '\\' instead of '/'
+
+
 
 ```shell
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
+```
+
+**WEB CONSOLE**
+```shell
+python3 ibd2sql_web.py /PATH/your_dir/xxxx.ibd
+# and then, you can visit http://yourip:8080 to view that ibd file
 ```
 
 more usage:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
@@ -103,6 +111,8 @@ more example: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/A
 | v1.3    | 2024.05.11 | add support 5.x                          |
 | v1.4    | 2024.05.21 | add support extra page and subpartition  |
 | v1.5    | 2024.07.10 | add support vector data types and fix INSTANT bug |
+| v1.6    | 2024.09.19 | fix some bugs |
+| v1.7    | 2024.10.29 | fix some bugs&support compress page&support recovery **drop table** & support ucs2,utf16,utf32 charset |
 
 detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

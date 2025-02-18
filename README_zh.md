@@ -27,7 +27,7 @@
 
 本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.5 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.5.tar.gz)
+V1.7 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.7.tar.gz)
 
 若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
 
@@ -55,6 +55,12 @@ python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql 
 python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 ```
 
+**WEB控制台查看ibd文件**
+```
+python3 ibd2sql_web.py /data/mysql_3314/mysqldata/db1/t20241104.ibd
+# 然后就使用浏览器方法: http://你的IP:8080  就可以随便点点点了
+```
+
 更多使用方法或者5.7环境请看:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
 
 
@@ -72,6 +78,8 @@ python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
 | v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7       |
 | v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
 | v1.5 | 2024.07.10 | vector and instant BUG |
+| v1.6 | 2024.09.19 | 修复一些bug                |
+| v1.7 | 2024.10.29 | 1.修复一些bug <br />2.支持压缩页 <br />3.支持drop table的恢复  <br />4.ucs2,utf16,utf32 字符集支持             |
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

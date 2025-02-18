@@ -4,6 +4,7 @@ import struct,json,zlib
 from ibd2sql.innodb_type import innodb_type_isvar
 import base64
 from ibd2sql.partition import subpartition
+import sys
 
 
 class TABLE(object):
@@ -32,7 +33,7 @@ class TABLE(object):
 		self.FOREIGN = True
 		self.ENCRYPTION = True
 		self.AUTO_EXTEND = True
-		self.COLUMN_COLL = False #解析字段的排序规则/字符集 
+		self.COLUMN_COLL = True #解析字段的排序规则/字符集 
 		self.COLLATION = True #表的排序规则还是要的
 		self.HAS_EXIST = True #是否有has exist
 		self.CONSTRAINT = True #支持约束
@@ -81,17 +82,19 @@ class TABLE(object):
 	def _column(self):
 		ddl = ""
 		for colid in self.column:
+			if self.column[colid]['name'] == 'FTS_DOC_ID':
+				continue
 			if self.column[colid]['version_dropped'] > 0:
 				continue
 			ddl += self._ci
 			col = self.column[colid]
 			ddl += f"`{col['name']}` {col['type']}" #column name
-			if self.COLUMN_COLL and col['type'] != 'int':
+			if self.COLUMN_COLL and col['type'] != 'int' and (self.table_options['charset'] != col['character_set']) and col['isvar'] and col['type'][:7] == 'varchar':
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
-			if not col['is_virtual'] and col["default_option"] == "":
-				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			if col['srs_id'] > 0:
 				ddl += f" /*!80003 SRID {col['srs_id']} */"
+			if not col['is_virtual'] and col["default_option"] == "":
+				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			else:
 				#虚拟列 VIRTUAL 
 				ddl += f"{' GENERATED ALWAYS AS (' + col['generation_expression'] + ') VIRTUAL' if col['is_virtual'] else '' }"
@@ -101,6 +104,7 @@ class TABLE(object):
 			else:
 				ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
 			ddl += f"{' AUTO_INCREMENT' if col['is_auto_increment'] else ''}" #auto_increment
+			ddl += f"{' ON UPDATE '+col['update_option'] if 'update_option' in col and col['update_option']!='' else ''}"
 			ddl += f"{' COMMENT '+repr(col['comment']) if col['comment'] != '' else '' }" #comment
 			#COLUMN_FORMAT 
 			#STORAGE 
@@ -118,6 +122,8 @@ class TABLE(object):
 			ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`{'' if x[1] == 0 else '('+str(x[1])+')'} {'DESC' if x[2] == 3 else ''}" for x in idx['element_col'] ] )   + ")"
 			#ddl += "(" +     ",".join( [ f"`{self.column[x[0]]['name']}`" for x in idx['element_col'] ] )   + ")" #不考虑前缀索引
 			ddl += " COMMENT " + repr(idx['comment']) if idx['comment'] != "" else ''
+			if not idx['is_visible']:
+				ddl += " /*!80000 INVISIBLE */"
 			ddl += ",\n"
 		return ddl[:-2]
 
@@ -143,6 +149,8 @@ class TABLE(object):
 		if self.COLLATION:
 			ddl += f" DEFAULT CHARSET={self.table_options['charset']} COLLATE={self.table_options['collate']}"
 		ddl += f" {' COMMENT '+repr(self.table_options['comment']) if self.table_options['comment'] != '' else ''}"
+		# FOR COMPRESS
+		ddl += f"{' COMPRESSION='+repr(self.table_options['compress']) if 'compress' in self.table_options else ''}"
 		return ddl
 
 class sdi(page):
@@ -160,6 +168,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		if self.FIL_PAGE_TYPE != 17853:
 			return None
 		self.page_name = 'SDI'
+		self.filename = kwargs['filename']
 
 		self.HAS_IF_NOT_EXISTS = True
 		self.table = TABLE() #初始化一个表对象
@@ -260,6 +269,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'version_dropped':version_dropped,
 				'version_added':version_added,
 				'physical_pos':physical_pos,
+				'update_option':col['update_option'] if 'update_option' in col else '',
 				'ct':ct #属于类型
 			}
 		column_ph = []
@@ -276,6 +286,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 
 		index = {}
 		for idx in dd['dd_object']['indexes']:
+			# issue 35
+			is_visible = False if 'is_visible' in idx and (not idx['is_visible']) else True
 			element_col = []
 			comment = idx['comment'] 
 			hidden = idx['hidden']
@@ -289,6 +301,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 					if self.table.column[x['column_opx']+1]['char_length'] > x['length']:
 						prefix_key = int(x['length']/_varlen)
 				xorder = x['order'] if 'order' in x else 0
+				if self.table.column[x['column_opx']+1]['ct'] == 'geom':
+					prefix_key = 0
 				element_col.append((x['column_opx']+1,prefix_key,xorder)) # order 是否为降序索引 
 				#/*column[ordinal_position] 从1开始计数,   idx['column_opx'] 从0开始计*/
 			if len(element_col) == 0:
@@ -299,6 +313,10 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 			elif idx['type'] == 2:
 				idx_type = 'UNIQUE '
 				self.table.uindex_id.append(idx['ordinal_position'])
+			elif idx['type'] == 4:
+				idx_type = 'FULLTEXT '
+			elif idx['type'] == 5:
+				idx_type = 'SPATIAL '
 			else:
 				idx_type = ''
 			name = idx['name'] if idx['name'] != "PRIMARY" else None
@@ -311,7 +329,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'comment':comment,
 				'idx_type':idx_type,
 				'element_col':element_col,
-				'options':_options
+				'options':_options,
+				'is_visible':is_visible
 			}
 		self.table.index = index
 
@@ -397,12 +416,28 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		"""
 		返回SDI信息(dict). (读一行数据)
 		"""
-		offset = struct.unpack('>H',self.bdata[PAGE_NEW_INFIMUM-2:PAGE_NEW_INFIMUM])[0] + PAGE_NEW_INFIMUM
+		offset = struct.unpack('>h',self.bdata[PAGE_NEW_INFIMUM-2:PAGE_NEW_INFIMUM])[0] + PAGE_NEW_INFIMUM
 		dtype,did = struct.unpack('>LQ',self.bdata[offset:offset+12])
 		dtrx = int.from_bytes(self.bdata[offset+12:offset+12+6],'big')
 		dundo = int.from_bytes(self.bdata[offset+12+6:offset+12+6+7],'big')
 		dunzip_len,dzip_len = struct.unpack('>LL',self.bdata[offset+33-8:offset+33])
-		unzbdata = zlib.decompress(self.bdata[offset+33:offset+33+dzip_len])
+		if dzip_len + offset > len(self.bdata) or dzip_len > len(self.bdata)//2: # 列太多
+			unzbdata = b''
+			SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.bdata[offset+33:offset+33+20])
+			if REAL_SIZE != dzip_len:
+				print('REAL_SIZE != dzip_len')
+				sys.exit(1)
+			with open(self.filename,'rb') as f:
+				while True:
+					f.seek(PAGENO*16384,0)
+					data = f.read(16384)
+					REAL_SIZE,PAGENO = struct.unpack('>LL',data[38:46])
+					unzbdata += data[46:-8]
+					if PAGENO == 4294967295:
+						break
+			unzbdata = zlib.decompress(unzbdata)
+		else:
+			unzbdata = zlib.decompress(self.bdata[offset+33:offset+33+dzip_len])
 		dic_info = json.loads(unzbdata.decode())
 		return dic_info if len(unzbdata) == dunzip_len else {}
 

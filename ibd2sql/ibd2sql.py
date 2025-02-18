@@ -5,6 +5,8 @@ from ibd2sql.innodb_page_sdi import *
 from ibd2sql.innodb_page_spaceORxdes import *
 from ibd2sql.innodb_page_inode import *
 from ibd2sql.innodb_page_index import *
+from ibd2sql import lz4
+from ibd2sql import AES
 import sys
 
 
@@ -39,6 +41,11 @@ class ibd2sql(object):
 		self.PAGE_SKIP = -1
 		self.MYSQL5 = False # 标记是否为MYSQL 5.7的, 其实没必要的, 只是我懒得去看以前的shit了... 那就堆shit吧 -_-
 
+		# 加密相关的
+		self.ENCRYPTED = False
+		self.KEY = b'\x00'*32
+		self.IV = b'\x00'*16
+
 
 	def _init_table_name(self):
 		try:
@@ -64,13 +71,31 @@ class ibd2sql(object):
 		self.debug(f"ibd2sql.read PAGE: {self.PAGE_ID} ")
 		self.f.seek(self.PAGESIZE*self.PAGE_ID,0)
 		#self.PAGE_ID += 1
-		return self.f.read(self.PAGESIZE)
+		#return self.f.read(self.PAGESIZE)
+		# FOR COMPRESS PAGE
+		data = self.f.read(self.PAGESIZE)
+		if data[24:26] == b'\x00\x0e': # 14: 压缩页, 先解压
+			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
+			if FIL_PAGE_ALGORITHM_V1 == 1:
+				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + zlib.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1])
+			elif FIL_PAGE_ALGORITHM_V1 == 2:
+				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + lz4.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1],FIL_PAGE_ORIGINAL_SIZE_V1)
+			else:
+				pass
+		elif data[24:26] == b'\x00\x0f': # 15: 加密页
+			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
+			data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + AES.aes_cbc256_decrypt(self.KEY,data[38:-10],self.IV) + AES.aes_cbc256_decrypt(self.KEY,data[-32:],self.IV)[-10:]
+		return data
 
 	def _init_sql_prefix(self):
 		#self.table.remove_virtual_column() #把虚拟字段干掉
 		#self.SQL_PREFIX = f"{ 'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}{'(`'+'`,`'.join([ self.table.column[x]['name'] for x in self.table.column ]) + '`)' if self.COMPLETE_SQL else ''} VALUES "
 		SQL_PREFIX = f"{'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}("
 		for x in self.table.column:
+			if 'hidden' in self.table.column[x] and self.table.column[x]['hidden'] > 1:
+				continue
+			if self.table.column[x]['generation_expression'] != "":
+				continue
 			if self.table.column[x]['is_virtual'] or not self.COMPLETE_SQL or self.table.column[x]['version_dropped'] > 0:
 				continue
 			else:
@@ -111,7 +136,7 @@ class ibd2sql(object):
 		else:
 			self.debug('ANALYZE SDI PAGE')
 			self.PAGE_ID = sdino
-			self.sdi = sdi(self.read(),debug=self.debug) #sdi页
+			self.sdi = sdi(self.read(),debug=self.debug,filename=self.FILENAME) #sdi页
 			if not self.sdi:
 				self.debug("ANALYZE SDI PAGE FAILED (maybe page is not 17853), will exit 2")
 				sys.exit(2)
@@ -294,11 +319,19 @@ class ibd2sql(object):
 		"""
 		sql = '('
 		for colno in self.table.column:
+			if 'hidden' in self.table.column[colno] and self.table.column[colno]['hidden'] > 1:
+				continue
+			if self.table.column[colno]['generation_expression'] != "":
+				continue
+			if self.table.column[colno]['is_virtual']:
+				continue
 			if self.table.column[colno]['version_dropped'] > 0:
 				continue
 			data = row[colno]
 			if data is None:
 				sql  = f"{sql}NULL, "
+			elif self.table.column[colno]['type'].startswith('varbinary(') or self.table.column[colno]['type'] in ['tinyblob','blob','mediumblob','longblob']:
+				sql  = f"{sql}{data}, "
 			elif self.table.column[colno]['ct'] in ['tinyint','smallint','int','float','double','bigint','mediumint','year','decimal','vector'] :
 				sql  = f"{sql}{data}, "
 			elif (not self.SET) and (self.table.column[colno]['ct'] in ['enum','set']):
