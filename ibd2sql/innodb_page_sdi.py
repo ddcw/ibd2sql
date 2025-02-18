@@ -421,7 +421,8 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		dtrx = int.from_bytes(self.bdata[offset+12:offset+12+6],'big')
 		dundo = int.from_bytes(self.bdata[offset+12+6:offset+12+6+7],'big')
 		dunzip_len,dzip_len = struct.unpack('>LL',self.bdata[offset+33-8:offset+33])
-		if dzip_len + offset > len(self.bdata) or dzip_len > len(self.bdata)//2: # 列太多
+		#if dzip_len + offset > len(self.bdata) or dzip_len > len(self.bdata)//2: # 列太多
+		if self.bdata[offset-5-2:offset-5] == (b'\x14' + struct.pack('>B',128+16384//256)):
 			unzbdata = b''
 			SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.bdata[offset+33:offset+33+20])
 			if REAL_SIZE != dzip_len:
