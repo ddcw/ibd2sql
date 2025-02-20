@@ -171,7 +171,7 @@ if __name__ == '__main__':
 		ddcw.IS_PARTITION = True
 		from ibd2sql.innodb_page_sdi import *
 		aa = frm2sdi.MYSQLFRM(FRMFILENAME).get_sdi_page()
-		ddcw.table = sdi(aa).table
+		ddcw.table = sdi(aa,filename=filename).table
 		ddcw._init_table_name()
 
 
