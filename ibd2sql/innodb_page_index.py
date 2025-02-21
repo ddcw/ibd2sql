@@ -255,11 +255,22 @@ class ROW(page):
 		_bf_offset = self.offset
 		if col['isbig']:
 			#data = self.read_innodb_big()
-			size = self._read_innodb_varsize(col['char_length'])
+			#size = self._read_innodb_varsize(col['char_length'])
+			size = self._read_innodb_varsize(65535) # isbig基本上就预示着可能使用2字节表示长度
 			if size + self.offset > 16384:
 				SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 				self.debug(f"SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
-				_tdata = first_blob(self.f,PAGENO)
+				if self.table.mysqld_version_id > 50744: # 8.0环境
+					_tdata = first_blob(self.f,PAGENO)
+				else:
+					_tdata = b''
+					while True:
+						self.f.seek(16384*PAGENO)
+						_ndata = self.f.read(16384) # FIL_PAGE_TYPE_BLOB
+						REAL_SIZE,PAGENO = struct.unpack('>LL',_ndata[38:46])
+						_tdata += _ndata[46:46+REAL_SIZE]
+						if PAGENO == 4294967295:
+							break
 			else:
 				_tdata = self.read(size)
 				
