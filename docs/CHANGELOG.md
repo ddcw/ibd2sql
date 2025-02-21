@@ -15,6 +15,8 @@
 | v1.5 | 2024.07.10 | instant相关BUG修复,vector数据类型的支持  | 1. 修复INSTANT相关的BUG(重写了相关代码).  <br />2. 支持mysql9.0新增的vector数据类型 <br />3.完善测试脚本 |
 | v1.6 | 2024.09.19 | 修复一些BUG | 修复一些BUG |
 | v1.7 | 2024.10.29 | 修复一些BUG并新增一些功能 | 1.修复已知BUG<br />2.支持压缩页的解析(zlib&lz4)<br />3.支持drop表的恢复<br />4.支持ucs2,utf16,utf32字符集 |
+| v1.8 | 2024.11.09 | 并新增一些功能 | 1.新增web控制台查看ibd文件结构 <br />2.支持Keyring加密表的解析<br />3.支持mysql的所有字符集<br />4.支持lower_case_table_names参数的修改 <br />5. 支持redundant行格式的解析 <br />6. 修复已知BUG(比如decimal小数部分填充问题)|
+| v1.9 | 2025.02.21 | 支持直接解析5.7的ibd文件| 1.修复已知BUG <br />2. 支持直接解析5.7的ibd文件|
 
 
 
@@ -34,3 +36,4 @@
 12. varchar <=255 时使用1bytes存储大小
 13. instant nullable计算方式.
 14. decimal小数部分以0开头时,未作填充
+15. [超多列的情况][https://github.com/ddcw/ibd2sql/issues/28](https://github.com/ddcw/ibd2sql/issues/28)

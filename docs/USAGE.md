@@ -162,24 +162,6 @@ python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p1.ibd
 
 
 
-## 5.6 & 5.7
-
-如果是mysql5.6或者5.7, 则需要先使用`mysqlfrm`提取元数据信息并写入到mysql8.0的环境中, 以供ibd2sql获取元数据信息.
-
-```shell
-# 提取出DDL 
-mysqlfrm /data/mysql_3308/mysqldata/db1/ddcw_alltype_table.frm --diagnostic 
-
-# 然后导入到8.0环境(以获取SDI信息.)
-....
-
-# 就可以使用本工具解析了
-python3 main.py --sdi-table /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd /data/mysql_3308/mysqldata/db1/ddcw_alltype_table.ibd  --sql --mysql5
-```
-
-注: mysqlfrm 存在 timestamp等数据类型的精度丢失问题. 需要人工确认. 如果可以`直接从数据库里面获取元数据信息`更好.
-
-
 
 ## ibd文件损坏的场景
 
