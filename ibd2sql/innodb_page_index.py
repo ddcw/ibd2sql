@@ -296,7 +296,17 @@ class ROW(page):
 				if size + self.offset > 16384:
 					SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self.read(20))
 					self.debug(f"VARCHAR: SPACE_ID:{SPACE_ID}  PAGENO:{PAGENO} BLOB_HEADER:{BLOB_HEADER} REAL_SIZE:{REAL_SIZE}")
-					_tdata = first_blob(self.f,PAGENO)
+					if self.table.mysqld_version_id > 50744:
+						_tdata = first_blob(self.f,PAGENO)
+					else:
+						_tdata = b''
+						while True:
+							self.f.seek(16384*PAGENO)
+							_ndata = self.f.read(16384)
+							REAL_SIZE,PAGENO = struct.unpack('>LL',_ndata[38:46])
+							_tdata += _ndata[46:46+REAL_SIZE]
+							if PAGENO == 4294967295:
+								break
 				else:
 					_tdata = self.read(size)
 			try:
