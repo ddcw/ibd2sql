@@ -375,7 +375,13 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		else: #不支持其它分区了(就4种: https://dev.mysql.com/doc/refman/8.0/en/partitioning-types.html)
 			pass
 		#self.table.partitions = pt
-		self.table.partitions = pt if dd['dd_object']['subpartition_type'] == 0 else subpartition(dd['dd_object']) # for subpartition
+		#self.table.partitions = pt if dd['dd_object']['subpartition_type'] == 0 else subpartition(dd['dd_object']) # for subpartition
+		if dd['dd_object']['subpartition_type'] == 0 and dd["mysqld_version_id"] > 50744:
+			self.table.partitions = pt
+		elif dd["mysqld_version_id"] > 50744:
+			self.table.partitions = subpartition(dd['dd_object'])
+		elif dd["mysqld_version_id"] <= 50744:
+			self.table.partitions = dd['dd_object']['subpartition_expression']
 
 
 		table_options = {}

@@ -132,6 +132,10 @@ if __name__ == '__main__':
 		AUTOFRM = True
 		FRMFILENAME = filename[:-4]+'.frm'
 		ddcw.MYSQL5 = True
+	elif os.path.exists(filename.split('#')[0]+'.frm'): # 5.7的分区表
+		AUTOFRM = True
+		FRMFILENAME = filename.split('#')[0]+'.frm'
+		ddcw.MYSQL5 = True
 	else:
 		AUTOFRM = False
 
