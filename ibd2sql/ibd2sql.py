@@ -161,7 +161,14 @@ class ibd2sql(object):
 		self.first_no_leaf_page = self.inode.index_page[0][0]
 		self.first_leaf_page = self.inode.index_page[0][1] 
 		#self.debug("START FIND FIRST LEAF PAGE")
-		if self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or True:
+		will_get_leaf_page = True # issue 53
+		if self.first_leaf_page != 4294967295:
+			self.PAGE_ID = self.first_leaf_page
+			first_leaf_page = self.read()
+			_page_level = struct.unpack('>9HQHQ',first_leaf_page[38:][:36])[-2]
+			if _page_level == 0 and first_leaf_page[24:26] == b'E\xbf':
+				 will_get_leaf_page = False
+		if self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or will_get_leaf_page:
 			self.init_first_leaf_page()
 		self.debug("FIRST LEAF PAGE ID:",self.first_leaf_page )
 		self.debug("#############################################################################")
