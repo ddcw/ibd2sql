@@ -301,7 +301,7 @@ class MYSQLFRM(object):
 		for i in range(self.COLUMNS['fields']):
 			if col_in_screen == self.COLUMNS['fields_per_screen']:
 				screens_read += 1
-				col_in_screen = 1
+				col_in_screen = 2 # issue 54 (1-->2)
 				self.data.read(8)
 				_terminator = self.data.read(1)
 				while _terminator == b' ':
