@@ -522,6 +522,21 @@ class MYSQLFRM(object):
 				column_type_utf8 += f"({char_length})"
 			elif field_type in [1,3,4,9]: # int
 				column_type_utf8 += f"{' unsigned' if pack_flag&1==0 else '' }"
+
+			# TIMESTAMP_OLD_FIELD  = 18
+			# TIMESTAMP_DN_FIELD   = 21 # TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			# TIMESTAMP_UN_FIELD   = 22 # TIMESTAMP DEFAULT <default value> ON UPDATE CURRENT_TIMESTAMP
+			# TIMESTAMP_DNUN_FIELD = 23 # DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+			# None                      # no DEFAULT, no ON UPDATE
+			default_option = ''
+			if col['metadata']['unireg_type'] in [21,23]:
+				default_option = 'CURRENT_TIMESTAMP'
+				default_value_null = False
+			update_option = ''
+			if col['metadata']['unireg_type'] in [22,23]:
+				update_option = 'CURRENT_TIMESTAMP'
+				default_value_null = False
+
 			COLUMN.append({
 				'name':col['name'],
 				'type':field_type,
@@ -547,7 +562,8 @@ class MYSQLFRM(object):
 				'default_value':default_value,
 				'default_value_utf8_null':default_value_null,
 				'default_value_utf8':default_value_utf8,
-				'default_option':'',
+				'default_option':default_option,
+				'update_option':update_option,
 				'comment':col['comment'],
 				'generation_expression':'',
 				'generation_expression_utf8':'',
