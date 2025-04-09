@@ -359,7 +359,7 @@ class MYSQLFRM(object):
 				self.COLUMNS['field'][i]['elements'] = element
 						
 		# 将默认值拆分给每个字段 (字段是否有默认值)
-		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['null_fields']+7)//8)
+		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['fields']+7)//8)
 		for i in range(self.COLUMNS['fields']):
 			if i < self.COLUMNS['fields'] - 1:
 				self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.read(self.COLUMNS['field'][i+1]['metadata']['recpos']-self.COLUMNS['field'][i]['metadata']['recpos'])
