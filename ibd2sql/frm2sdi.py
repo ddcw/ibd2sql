@@ -359,7 +359,7 @@ class MYSQLFRM(object):
 				self.COLUMNS['field'][i]['elements'] = element
 						
 		# 将默认值拆分给每个字段 (字段是否有默认值)
-		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['fields']+7)//8)
+		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['null_fields']+7+1)//8)
 		for i in range(self.COLUMNS['fields']):
 			if i < self.COLUMNS['fields'] - 1:
 				self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.read(self.COLUMNS['field'][i+1]['metadata']['recpos']-self.COLUMNS['field'][i]['metadata']['recpos'])
@@ -428,9 +428,11 @@ class MYSQLFRM(object):
 			#null_bitmask_adds = 0 if self.pack_record == 1 else 1
 			if col['metadata']['pack_flag']&(2**14)>0 or col['metadata']['unireg_type'] == 15:
 				default_value_null = True
-			else:
+			elif col['metadata']['pack_flag']&(2**15)>0:
 				null_bitmask_adds += 1
 				default_value_null = False if self.default_value_null_bitmask&(1<<(null_bitmask_adds)) == 0 else True
+			else:
+				default_value_null = True
 			default_value = b''
 			default_value_utf8 = ''
 			if type_default_size > 0 or field_type in [21,22,23]: # 定长类型的默认值
@@ -633,7 +635,7 @@ class MYSQLFRM(object):
 			idx = self.KEYS['key'][i]
 			#PK:0 UK:64 K:65 FULL:1025 SPA:129
 			key_type = 3 if idx['name'] != 'PRIMARY' else 1
-			if not idx['flags']^1:
+			if not idx['flags']&1 and key_type != 1:
 				key_type = 2
 			elif idx['flags'] & 1024:
 				key_type = 4
