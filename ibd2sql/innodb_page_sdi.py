@@ -93,7 +93,7 @@ class TABLE(object):
 				ddl += f" CHARACTER SET {col['character_set']} COLLATE {col['collation']}"
 			if col['srs_id'] > 0:
 				ddl += f" /*!80003 SRID {col['srs_id']} */"
-			if not col['is_virtual'] and col["default_option"] == "":
+			if not col['is_virtual']:# and col["default_option"] == "":
 				ddl += f"{' NOT' if not col['is_nullable'] else ''} NULL" #nullabel
 			else:
 				#虚拟列 VIRTUAL 
