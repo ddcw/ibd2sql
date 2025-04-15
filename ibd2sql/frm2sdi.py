@@ -359,7 +359,9 @@ class MYSQLFRM(object):
 				self.COLUMNS['field'][i]['elements'] = element
 						
 		# 将默认值拆分给每个字段 (字段是否有默认值)
-		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['null_fields']+7+1)//8)
+		# HA_OPTION_PACK_RECORD = 1
+		self.null_bit_pos = 1 if self.FRM_HEADER['create_info_table_option'] & 1 == 0 else 0
+		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['null_fields']+7+self.null_bit_pos)//8)
 		for i in range(self.COLUMNS['fields']):
 			if i < self.COLUMNS['fields'] - 1:
 				self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.read(self.COLUMNS['field'][i+1]['metadata']['recpos']-self.COLUMNS['field'][i]['metadata']['recpos'])
@@ -390,7 +392,8 @@ class MYSQLFRM(object):
 		# 字段信息
 		COLUMN = []
 		#self.default_value_null_bitmask = self.DEFAULT_VALUE.read(1)
-		null_bitmask_adds = -1 if self.pack_record == 1 else 0
+		#null_bitmask_adds = -1 if self.pack_record == 1 else 0
+		null_bitmask_adds = 0 if self.FRM_HEADER['create_info_table_option'] & 1 == 0 else -1
 		for i in range(len(self.COLUMNS['field'])):
 			col = self.COLUMNS['field'][i]
 			field_type = COL_TYPE[col['metadata']['field_type']][2]
@@ -432,7 +435,7 @@ class MYSQLFRM(object):
 				null_bitmask_adds += 1
 				default_value_null = False if self.default_value_null_bitmask&(1<<(null_bitmask_adds)) == 0 else True
 			else:
-				default_value_null = True
+				default_value_null = False
 			default_value = b''
 			default_value_utf8 = ''
 			if type_default_size > 0 or field_type in [21,22,23]: # 定长类型的默认值
@@ -538,6 +541,10 @@ class MYSQLFRM(object):
 			if col['metadata']['unireg_type'] in [22,23]:
 				update_option = 'CURRENT_TIMESTAMP'
 				default_value_null = False
+
+			# char是定长的, 不需要记录长度. 顺便把空格干掉
+			if col['metadata']['field_type'] == 254:
+				default_value_utf8 = col['default_bin'].decode().rstrip()
 
 			COLUMN.append({
 				'name':col['name'],
