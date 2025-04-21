@@ -214,6 +214,42 @@ class ibd2sql(object):
 			self.debug("============================= WARNING ================================")
 			self.debug("========================== FORCE IS TRUE =============================")
 			self.debug("============================= WARNING ================================")
+			# 实现强制解析功能, 即遍历整个ibd文件, 判断idxno&page type,然后强制解析.(跳过坏块)
+			rootpageno = int(self.table.index[self.table.cluster_index_id]['options']['root'])
+			self.PAGE_ID = rootpageno
+			indexpagedata = self.read()
+			B_PAGE_INDEX_ID = indexpagedata[38:38+56][28:28+8]
+			import os
+			from ibd2sql import CRC32C
+			total_pages = os.path.getsize(sys.argv[1])//16384
+			NEXT_PAGE_ID = 3
+			sql = self.SQL_PREFIX
+			while NEXT_PAGE_ID < total_pages:
+				self.PAGE_ID = NEXT_PAGE_ID
+				try:
+					indexdata = self.read() # 读取页的时候可能就是坏块了
+				except:
+					NEXT_PAGE_ID += 1
+					continue
+				NEXT_PAGE_ID += 1
+				if indexdata[24:26] == b'E\xbf' and indexdata[66:74] == B_PAGE_INDEX_ID and indexdata[64:66] == b'\x00\x00':
+					checksum_field1 = struct.unpack('>L',indexdata[:4])[0]
+					checksum_field2 = struct.unpack('>L',indexdata[-8:-4])[0]
+					c1 = CRC32C.crc32c(indexdata[4:26])
+					c2 = CRC32C.crc32c(indexdata[38:16384-8])
+					if checksum_field1 == checksum_field2 == (c1^c2)&(2**32-1): # 坏块就不解析了
+						aa = index(indexdata,table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f)
+						aa.pageno = self.PAGE_ID
+						aa.DELETED = True if self.DELETE else False
+						_tdata = aa.read_row()
+						for x in _tdata:
+							_sql = f"{sql}{self._tosql(x['row'])};"
+							if self.LIMIT == 0:
+								return None
+							else:
+								print(_sql)
+								self.LIMIT -= 1
+			sys.exit(0)
 		self.debug("ibd2sql get_sql BEGIN:",self.PAGE_ID,self.PAGE_MIN,self.PAGE_MAX,self.PAGE_COUNT)
 		while self.PAGE_ID > self.PAGE_MIN and self.PAGE_ID <= self.PAGE_MAX and self.PAGE_ID < 4294967295 and self.PAGE_COUNT != 0:
 			self.debug("INIT INDEX OBJECT")
