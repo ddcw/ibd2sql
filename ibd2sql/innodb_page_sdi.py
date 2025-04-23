@@ -342,7 +342,9 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		foreign = []
 		for fgk in dd['dd_object']['foreign_keys']:
 			fkid = f"{','.join([ '`'+x['referenced_column_name']+'`' for x in fgk['elements']])}"
-			foreign.append(f"CONSTRAINT `{fgk['name']}` FOREIGN KEY ({fkid}) REFERENCES `{fgk['referenced_table_schema_name']}`.`{fgk['referenced_table_name']}` ({fkid})")
+			localcol = f"{','.join([ '`'+str(self.table.column[x['column_opx']+1]['name'])+'`' for x in fgk['elements']])}" # issue 57
+			# 1:None 2:RESTRICT 3:CASCADE
+			foreign.append(f"CONSTRAINT `{fgk['name']}` FOREIGN KEY ({localcol}) REFERENCES `{fgk['referenced_table_schema_name']}`.`{fgk['referenced_table_name']}` ({fkid}){' ON DELETE RESTRICT' if fgk['delete_rule'] == 2 else ''}{' ON DELETE CASCADE' if fgk['delete_rule'] == 3 else ''}{' ON UPDATE CASCADE' if fgk['update_rule'] == 3 else ''}{' ON UPDATE RESTRICT' if fgk['update_rule'] == 2 else ''}") # issue 57
 		self.table.foreign = foreign
 
 		#CONSTRAINT CHECK
