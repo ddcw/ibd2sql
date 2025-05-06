@@ -224,6 +224,11 @@ Example:
 		"""
 		bdata = self.read(n)
 		signed = False if int.from_bytes(bdata[:1],'big')&128 else True
+		# issue 58  
+		if signed:
+			bdata = bytes((~b&0xff) for b in bdata)
+		_signed = signed
+		signed = False
 		#print(bdata,extra)
 		p1 = extra[0] #整数部分字节数
 		p2 = extra[1] #小数部分
@@ -267,7 +272,7 @@ Example:
 		elif signed and len(t1data) == 1:
 			t1data[0] = (t1data[0] ^ (2**(8*lastbytes1-1)-1)) + 1
 		rdata = "".join([ str(x).replace('-','') for x in t1data ]) + "." + "".join([ str(x).replace('-','') for x in t2data ])
-		data = f"{'-' if signed else ''}{rdata}"
+		data = f"{'-' if _signed else ''}{rdata}"
 		return data
 
 
