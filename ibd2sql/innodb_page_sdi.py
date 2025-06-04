@@ -279,7 +279,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 		self.table.column = column
 		self.table.column_ph = column_ph
 		self.table.have_null = nullable
-		self.table.have_null_instant = nullable_instant
+		#self.table.have_null_instant = nullable_instant
 		self.table.null_bitmask_count = null_bitmask_count
 		self.table.null_bitmask_count_instant = null_bitmask_count_instant
 
