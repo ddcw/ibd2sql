@@ -27,7 +27,7 @@
 
 本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
 
-V1.10 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.10.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.10.tar.gz)
+V1.11 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.11.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.11.tar.gz)
 
 若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
 
@@ -83,6 +83,7 @@ python3 ibd2sql_web.py /data/mysql_3314/mysqldata/db1/t20241104.ibd
 | v1.8    | 2024.11.09 | 1. 支持所有字符集<br />2. 支持kering 插件加密的表 <br />3. 支持web控制台查看数据结构 <br />4. 支持修改lower_case_table_names|
 | v1.9    | 2025.02.21 | 修复已知BUG, 支持直接解析5.7的ibd文件|
 | v1.10    | 2025.04.16 | 修复已知BUG, 添加快速统计表行数的脚本|
+| v1.11    | 2025.06.13 | 修复已知BUG, 设置--foce 为遍历整个数据文件(1. 跳过坏块 2.ibd文件不完整 3. delete page被剔除btree+)|
 
 详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

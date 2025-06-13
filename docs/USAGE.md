@@ -165,25 +165,10 @@ python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_partition_range#p#p1.ibd
 
 ## ibd文件损坏的场景
 
-如果ibd文件数据页损坏, 则可以跳过该页, 或者暴力解析.
-
-对于想并发解析的, 也可以使用本方法.
-
-如果是ibd文件的元数据信息损坏, 则要先恢复元数据信息. 然后使用`--sdi-table`选项指定正确的元数据信息文件.
-
-**我这里没有做重定向, 是直接打印在屏幕上的(方便演示)**
+ibd文件损坏(有坏块), ibd文件不完整, delete_flag的整个页都不在btree+中等情况, 可以使用`--force`解析数据
 
 ```shell
-filename="/tmp/ddcw_alltype_table.ibd" # 要解析的ibd文件名
-python3 main.py ${filename} --ddl # 获取表结构信息
-filesize=`stat -c %s ${filename}`
-maxpagecount=$[ ${filesize} / 16384 ]
-current_page=1
-while [ ${current_page} -le ${maxpagecount} ];do
-	echo "-- ${filename} PAGE NO: ${current_page}"; 
-	current_page=$[ ${current_page} + 1 ]
-	python3 main.py ${filename} --sql --page-start ${current_page} --page-count 1 2>/dev/null ; 
-done
+python3 main.py /data/xxx.ibd --ddl --sql --force
 ```
 
 

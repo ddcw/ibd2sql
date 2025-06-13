@@ -24,7 +24,7 @@ Useful: parse data with mark of deleted (--delete).
 
 # DOWNLOAD & USAGE
 
-v1.10 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.10.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.10.tar.gz)
+v1.11 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.11.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.11.tar.gz)
 
 
 
@@ -116,6 +116,7 @@ more example: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/A
 | v1.8    | 2024.11.09 | support keyring plugin encryption & all character set|
 | v1.9    | 2025.02.21 | fix some bugs & support direct parsing of 5.x files|
 | v1.10    | 2025.04.16 | fix some bugs & add super_fast_count.py|
+| v1.11    | 2025.06.13 | fix some bugs & make `--force` to view page one by one for skip BAD BLOCK |
 
 detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 

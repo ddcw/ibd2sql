@@ -18,6 +18,7 @@
 | v1.8 | 2024.11.09 | 并新增一些功能 | 1.新增web控制台查看ibd文件结构 <br />2.支持Keyring加密表的解析<br />3.支持mysql的所有字符集<br />4.支持lower_case_table_names参数的修改 <br />5. 支持redundant行格式的解析 <br />6. 修复已知BUG(比如decimal小数部分填充问题)|
 | v1.9 | 2025.02.21 | 支持直接解析5.7的ibd文件| 1.修复已知BUG <br />2. 支持直接解析5.7的ibd文件|
 | v1.10 | 2025.04.16 |修改已知BUG & 添加快速统计表行的脚本 |
+| v1.11 | 2025.06.13 |修改已知BUG &  设置--foce 为遍历整个数据文件(1. 跳过坏块 2.ibd文件不完整 3. delete page被剔除btree+ |
 
 
 
@@ -38,3 +39,5 @@
 13. instant nullable计算方式.
 14. decimal小数部分以0开头时,未作填充
 15. [超多列的情况][https://github.com/ddcw/ibd2sql/issues/28](https://github.com/ddcw/ibd2sql/issues/28)
+16. [issue 16:decimal符号问题](https://github.com/ddcw/ibd2sql/issues/58)
+17. [外键显示问题](https://github.com/ddcw/ibd2sql/issues/57)
