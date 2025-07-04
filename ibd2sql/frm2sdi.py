@@ -181,9 +181,10 @@ class MYSQLFRM(object):
 			raise ValueError(f'frm_version require >= 9, current:{self.FRM_HEADER["frm_version"]}')
 		if self.FRM_HEADER['legacy_db_type'] != 12:
 			raise ValueError(f'only support innodb. current is:{elf.FRM_HEADER["legacy_db_type"]}')
-		record_offset = self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']
-		record_offset = ((record_offset//self.FRM_HEADER['io_size']) + 1)*self.FRM_HEADER['io_size']
-		self.record_offset = record_offset
+		#record_offset = self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']
+		#record_offset = ((record_offset//self.FRM_HEADER['io_size']) + 1)*self.FRM_HEADER['io_size']
+		#self.record_offset = record_offset
+		self.record_offset = struct.unpack('<H',self.data.data[67:69])[0]
 
 	def _read_keys(self):
 		self.data.seek(self.FRM_HEADER['io_size'],0)
