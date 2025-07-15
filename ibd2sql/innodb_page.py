@@ -174,6 +174,8 @@ INNODB_PAGE(16K)-|---> PAGE_DATA
 		self.bdata = args[0]
 		bdata = self.bdata
 		self.DEBUG = kwargs['debug'] if 'debug' in kwargs else _DEBUG
+		if 'DEBUG' in kwargs and not kwargs['DEBUG']:
+			self.debug = self.nodebug
 		self.page_name = 'innodb page'
 		self.FIL_PAGE_SPACE_OR_CHKSUM, self.FIL_PAGE_OFFSET, self.FIL_PAGE_PREV, self.FIL_PAGE_NEXT, self.FIL_PAGE_LSN, self.FIL_PAGE_TYPE, self.FIL_PAGE_FILE_FLUSH_LSN = struct.unpack('>4LQHQ',bdata[:34])
 		self.FIL_PAGE_SPACE_ID = struct.unpack('>L',bdata[34:38])[0]
@@ -494,6 +496,9 @@ Example:
 
 	def __str__(self):
 		return f'page_name: {self.page_name}'
+
+	def nodebug(self,*args):
+		pass
 
 	def debug(self,*args):
 		#self.DEBUG(args)

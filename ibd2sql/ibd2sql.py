@@ -238,7 +238,7 @@ class ibd2sql(object):
 					c1 = CRC32C.crc32c(indexdata[4:26])
 					c2 = CRC32C.crc32c(indexdata[38:16384-8])
 					if checksum_field1 == checksum_field2 == (c1^c2)&(2**32-1): # 坏块就不解析了
-						aa = index(indexdata,table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f)
+						aa = index(indexdata,table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f,DEBUG=self.DEBUG)
 						aa.pageno = self.PAGE_ID
 						aa.DELETED = True if self.DELETE else False
 						_tdata = aa.read_row()
@@ -253,7 +253,7 @@ class ibd2sql(object):
 		self.debug("ibd2sql get_sql BEGIN:",self.PAGE_ID,self.PAGE_MIN,self.PAGE_MAX,self.PAGE_COUNT)
 		while self.PAGE_ID > self.PAGE_MIN and self.PAGE_ID <= self.PAGE_MAX and self.PAGE_ID < 4294967295 and self.PAGE_COUNT != 0:
 			self.debug("INIT INDEX OBJECT")
-			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f)
+			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f,DEBUG=self.DEBUG)
 			aa.DELETED = True if self.DELETE else False
 			aa.pageno = self.PAGE_ID
 			self.debug("SET FILTER",self.WHERE2,self.WHERE3)
