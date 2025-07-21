@@ -340,13 +340,13 @@ class ROW(page):
 				#data = col['elements_dict'][data]
 				data = repr(col['elements_dict'][data])
 		elif col['ct'] == 'time':
-			data = self.read_innodb_time(n)
+			data = self.read_innodb_time(n,col['datetime_precision'])
 		elif col['ct'] == 'datetime':
-			data = self.read_innodb_datetime(n)
+			data = self.read_innodb_datetime(n,col['datetime_precision'])
 		elif col['ct'] == 'date':
 			data = self.read_innodb_date(n)
 		elif col['ct'] == 'timestamp':
-			data = self.read_innodb_timestamp(n)
+			data = self.read_innodb_timestamp(n,col['datetime_precision'])
 		elif col['ct'] == 'year':
 			data = self._read_uint(n) + 1900
 		elif col['ct'] == 'bit':

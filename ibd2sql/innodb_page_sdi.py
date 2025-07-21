@@ -270,6 +270,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'version_added':version_added,
 				'physical_pos':physical_pos,
 				'update_option':col['update_option'] if 'update_option' in col else '',
+				'datetime_precision':col['datetime_precision'],
 				'ct':ct #属于类型
 			}
 		column_ph = []

@@ -331,7 +331,7 @@ Example:
 		return rdata
 
 	#https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html
-	def read_innodb_datetime(self,n):
+	def read_innodb_datetime(self,n,datetime_precision=0):
 		"""
 5 bytes + fractional seconds storage
 1bit符号  year_month:17bit  day:5  hour:5  minute:6  second:6
@@ -363,6 +363,8 @@ Example:
 		second = (idata& ((1 << 6) - 1))
 		great0 = True if idata&(1<<39) else False
 		fraction = int.from_bytes(bdata[5:],'big') if len(bdata)>5 else None
+		if datetime_precision > 0:
+			fraction = str(fraction).zfill(datetime_precision)
 		#就不转为datetime类型了(不会涉及到计算). 就字符串吧, 好看点
 		#return f"{'' if great0 else '-'}{year}-{month}-{day} {hour}:{minute}:{second}{'' if fraction is None else '.'+str(fraction)}"
 		if fraction is None:
@@ -370,7 +372,7 @@ Example:
 		else:
 			return f'{year}-{month}-{day} {hour}:{minute}:{second}.{fraction}' if great0 else f'-{year}-{month}-{day} {hour}:{minute}:{second}.{fraction}'
 
-	def read_innodb_time(self,n):
+	def read_innodb_time(self,n,datetime_precision=0):
 		"""
 1bit符号  hour:11bit    minute:6bit  second:6bit  精度1-3bytes
 -------------------------------------------------------------------
@@ -392,6 +394,8 @@ Example:
 		second = (idata& ((1 << 6) - 1))
 		great0 = True if idata&(1<<23) else False
 		fraction = int.from_bytes(bdata[3:],'big') if len(bdata)>3 else None
+		if datetime_precision > 0:
+			fraction = str(fraction).zfill(datetime_precision)
 		if fraction is None:
 			return f'{hour}:{minute}:{second}' if great0 else f'-{1024-hour}:{minute}:{second}'
 		else:
@@ -418,13 +422,15 @@ Example:
 		great0 = True if idata&(1<<23) else False
 		return f'{year}-{month}-{day}' if great0 else f'-{year}-{month}-{day}'
 
-	def read_innodb_timestamp(self,n):
+	def read_innodb_timestamp(self,n,datetime_precision=0):
 		"""
 		4 bytes + fraction
 		"""
 		bdata = self.read(n)
 		ltime = time.localtime(int.from_bytes(bdata[:4],'big'))
 		fraction = int.from_bytes(bdata[4:],'big') if len(bdata)>4 else None
+		if datetime_precision > 0:
+			fraction = str(fraction).zfill(datetime_precision)
 		return f'{ltime.tm_year}-{ltime.tm_mon}-{ltime.tm_mday} {ltime.tm_hour}:{ltime.tm_min}:{ltime.tm_sec}.{fraction if fraction is not None else ""}'
 		if fraction is None:
 			return f'{ltime.tm_year}-{ltime.tm_mon}-{ltime.tm_mday} {ltime.tm_hour}:{ltime.tm_min}:{ltime.tm_sec}'
