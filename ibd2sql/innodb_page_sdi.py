@@ -103,7 +103,7 @@ class TABLE(object):
 				ddl += f" DEFAULT ({col['default_option']})" if self.mysqld_version_id > 80012 else f" DEFAULT {col['default_option']}"
 			elif col['have_default']: # issue 70
 				ddl += ' DEFAULT '
-				ddl += col['default'] if col['ct'] in ['bit','binary','varbinary'] else repr(col['default'])
+				ddl += col['default'] if col['typeid'] == 17 or col['collation_id'] == 63 else repr(col['default'])
 				#ddl += f"{' DEFAULT '+repr(col['default']) if col['have_default'] else ''}" #default
 			ddl += f"{' AUTO_INCREMENT' if col['is_auto_increment'] else ''}" #auto_increment
 			ddl += f"{' ON UPDATE '+col['update_option'] if 'update_option' in col and col['update_option']!='' else ''}"
@@ -273,6 +273,7 @@ SDI_PAGE-|---> INFIMUM          13 bytes
 				'physical_pos':physical_pos,
 				'update_option':col['update_option'] if 'update_option' in col else '',
 				'datetime_precision':col['datetime_precision'],
+				'typeid':col['type'],
 				'ct':ct #属于类型
 			}
 		column_ph = []
