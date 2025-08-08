@@ -215,7 +215,8 @@ class ibd2sql(object):
 			self.debug("========================== FORCE IS TRUE =============================")
 			self.debug("============================= WARNING ================================")
 			# 实现强制解析功能, 即遍历整个ibd文件, 判断idxno&page type,然后强制解析.(跳过坏块)
-			rootpageno = int(self.table.index[self.table.cluster_index_id]['options']['root'])
+			#rootpageno = int(self.table.index[self.table.cluster_index_id]['options']['root'])
+			rootpageno = self.inode.index_page[0][0] # issue 72
 			self.PAGE_ID = rootpageno
 			indexpagedata = self.read()
 			B_PAGE_INDEX_ID = indexpagedata[38:38+56][28:28+8]
