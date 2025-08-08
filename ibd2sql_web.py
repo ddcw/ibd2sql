@@ -57,6 +57,20 @@ signal.signal(signal.SIGINT, signal_15_handler)  # ctrl+c
 # ibd文件初始化
 ddcw = ibd2sql()
 ddcw.FILENAME = filename
+
+# issue 72:  for 5.7
+with open(filename,'rb') as f:
+        data = f.read()
+if data[8:12] == b'\x00\x00\x00\x00': # 5.7
+        ddcw.MYSQL5 = True
+        FRMFILENAME = filename[:-4]+'.frm' # no partition table
+        ddcw.IS_PARTITION = True
+        from ibd2sql import frm2sdi
+        from ibd2sql.innodb_page_sdi import *
+        aa = frm2sdi.MYSQLFRM(FRMFILENAME).get_sdi_page()
+        ddcw.table = sdi(aa,filename=filename).table
+        ddcw._init_table_name()
+
 ddcw.init()
 INDEX = []
 for x in ddcw.table.index:
