@@ -153,6 +153,7 @@ class PAGE(page):
 
 	def read_rec_col(self,colno): # 只管读, 是否instant是read_rec_field来看的
 		col = self.table.column[colno]
+		extra = col['extra']
 		if 'is_row_id' in col:
 			return self._read_uint(6)
 		n = col['size']
