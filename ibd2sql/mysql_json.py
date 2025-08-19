@@ -110,16 +110,10 @@ class jsonob(object):
 					data = None
 				else:
 					data = ''
-			elif t >= 0x05 and t <= 0x0a: #inline data
-				#print("READ VALUE ENTRY Inline data for INT",t,0x05,0x0a)
+			elif t >= 0x05 and t <= 0x06: #inline data
 				data = self.read_inline_data(t)
-			elif t == 0x0b: #double
-				#print("READ VALUE ENTRY Double")
-				#data = struct.unpack('d',self.read(8))[0]
+			else: # double,int32,int64,char
 				data = self.read_little()
-			elif t == 0x0c: #string
-				#print("READ DATA ENTRY STRING",self.offset)
-				data = self.read_little() #OFFSET
 			value_entry.append((t,data))
 		self.value_entry = value_entry
 		#print("VALUE ENTRY LIST ---------",self.value_entry)
@@ -142,6 +136,10 @@ class jsonob(object):
 				value.append(self.bdata[x[1]+_s:x[1]+_s+size].decode()) 
 			elif x[0] == 0x0b:
 				value.append(struct.unpack('d',self.bdata[x[1]:x[1]+8])[0])
+			elif x[0] >= 0x07 and x[0] <= 0x0a:
+				signed = True if x[0]%2==1 else False
+				size = 8 if x[0] >= 0x09 else 4
+				value.append(int.from_bytes(self.bdata[x[1]:x[1]+size],'little',signed=signed))
 			elif x[0] <= 0x03: #json对象, 又递归
 				s = self.ssize
 				size = int.from_bytes(self.bdata[x[1]+s: x[1]+s+s ], 'little')
