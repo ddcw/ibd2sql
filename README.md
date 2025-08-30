@@ -1,6 +1,6 @@
 # ibd2sql
 
-[中文版介绍](https://github.com/ddcw/ibd2sql/blob/main/README_zh.md)
+[中文版介绍](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/README_zh.md)
 
 [ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform MySQL IBD file to SQL(data). Write using Python3 .
 
@@ -15,16 +15,16 @@ When you only have IBD data file or a portion of IBD data files left, you can us
 **Linux**
 
 ```shell
-wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
-unzip main.zip
-cd ibd2sql-main
+wget https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
+unzip ibd2sql-v2.x.zip
+cd ibd2sql-ibd2sql-v2.x/
 ```
 
 
 
 **Windows**
 
-click https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip to download
+click https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip to download
 
 
 
@@ -57,7 +57,7 @@ python3 main.py your_file.ibd --web
 
 
 
-more usage: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
+more usage: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
 
 
 
@@ -82,7 +82,7 @@ env: MySQL 8.0.28  Python 3.10.4 CPU MHz: 2688.011
 | 1.x     | 2024.1 | Supports complete data types and 5.7                       |
 | 0.x     | 2023.4 | Only supports partial cases of 8.0                         |
 
-detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
+detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/CHANGELOG.md)
 
 
 

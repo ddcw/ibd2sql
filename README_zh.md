@@ -1,6 +1,6 @@
 # ibd2sql
 
-[english](https://github.com/ddcw/ibd2sql/blob/main/README.md)
+[english](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/README.md)
 
 [ibd2sql](https://github.com/ddcw/ibd2sql) 是一个解析MySQL数据文件的工具. ~~老NB了~~. 使用python3编写的,没得依赖包, 下载就能使用, 所以也就不提供二进制包了.
 
@@ -15,16 +15,16 @@
 **Linux**
 
 ```shell
-wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
-unzip main.zip
-cd ibd2sql-main
+wget https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
+unzip ibd2sql-v2.x.zip
+cd ibd2sql-ibd2sql-v2.x/
 ```
 
 
 
 **Windows**
 
-点击下载: https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip 
+点击下载: https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
 
 
 
@@ -57,7 +57,7 @@ python3 main.py your_file.ibd --web
 
 
 
-完整的使用说明: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
+完整的使用说明: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
 
 
 
@@ -84,7 +84,7 @@ python3 main.py your_file.ibd --web
 | 1.x  | 2024.1   | 支持所有数据类型,也支持5.7环境          |
 | 0.x  | 2023.4   | 只支持8.0的部分情况                     |
 
-完整的历史更新记录: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
+完整的历史更新记录: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/CHANGELOG.md)
 
 
 
