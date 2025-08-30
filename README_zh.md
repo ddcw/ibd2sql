@@ -1,37 +1,18 @@
-# 介绍
+# ibd2sql
 
-[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform mysql ibd file to sql(data).
+[english](https://github.com/ddcw/ibd2sql/blob/main/README.md)
 
-[ibd2sql](https://github.com/ddcw/ibd2sql)是一个使用纯`python3`编写的**离线解析**MYSQL INNODB存储引擎的`ibd文件`的工具. 无第三方依赖包. 使用**GPL-3.0** license.
+[ibd2sql](https://github.com/ddcw/ibd2sql) 是一个解析MySQL数据文件的工具. ~~老NB了~~. 使用python3编写的,没得依赖包, 下载就能使用, 所以也就不提供二进制包了.
 
-
-
-# 特点
-
-1. **方便**: 提取表DDL
-2. **实用**: 可替换库(--schema)/表(--table)名, 可在sql语句中输出完整的字段(--complete)
-3. **简单**: 纯python3代码编写, 无依赖包.
-4. **支持众多数据类型**: 支持所有mysql数据类型
-5. **支持复杂的表结构**: 分区表, 注释, 主键, 外键, 约束, 自增, 普通索引, 前缀索引, 主键前缀索引, 唯一索引, 复合索引, 默认值, 符号, 虚拟字段, INSTANT, 无主键等情况的表
-6. **数据误删恢复**: 可以输出被标记为deleted的数据
-7. **安全**: 离线解析ibd文件, 仅可读权限即可
-8. **支持范围广**: 支持mysql 5.6 or 5.7 or 8.0 or 8.4 or 9.0
+当你只剩下IBD文件或者剩下半截数据文件的时候, 你可以使用`ibd2sql`去恢复其中的数据.
 
 
 
-测试例子: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/ALLTEST.md)
-
-
-
-# 下载使用
-
-本工具使用纯`python3`编写, 无依赖包, 所以建议直接使用源码.
-
-V1.12 版本下载地址: [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.12.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.12.tar.gz)
-
-若要将结果保存到文件, 可使用**重定向**(`python3 main.py xxx.ibd --sql > xxxx.sql`)
+# 下载和使用
 
 ## 下载
+
+**Linux**
 
 ```shell
 wget https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip
@@ -39,59 +20,81 @@ unzip main.zip
 cd ibd2sql-main
 ```
 
+
+
+**Windows**
+
+点击下载: https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip 
+
+
+
 ## 使用
 
 **Linux**
 
 ```shell
-python3 main.py /data/mysql_3314/mysqldata/ibd2sql/ddcw_alltype_table.ibd --sql --ddl
+python3 main.py your_file.ibd --sql --ddl
 ```
+
+
 
 **Windows**
 
-注意python名字和路径
+windows环境python3是叫做python,名字问题,小坑
 
-```shell
-python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
+```powershell
+python main.py your_file.ibd --sql --ddl
 ```
 
-**WEB控制台查看ibd文件**
+
+
+## WEB 控制台
+
 ```
-python3 ibd2sql_web.py /data/mysql_3314/mysqldata/db1/t20241104.ibd
-# 然后就使用浏览器方法: http://你的IP:8080  就可以随便点点点了
+python3 main.py your_file.ibd --web
+# 执行之后,就可以使用浏览器访问: http://你的IP地址:8080
 ```
 
-更多使用方法或者5.7环境请看:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
+
+
+完整的使用说明: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
 
 
 
-# 版本更新
+# 性能
 
-| 版本   | 更新时间       | 说明                     |
-| ---- | ---------- | ---------------------- |
-| v0.1 | 2023.4.27  | 第一个版本                  |
-| v0.2 | 2023.08.30 | 支持更多数据类型               |
-| v0.3 | 2023.10.13 | 支持5.7升级到8.0的ibd文件      |
-| v1.0 | 2024.01.05 | 支持debug,支持更多类型和功能      |
-| v1.1 | 2024.04.12 | 修复一些bug                |
-| v1.2 | 2024.04.25 | 新增空间坐标的支持              |
-| v1.3 | 2024.05.11 | 支持mysql 5.6, 5.7       |
-| v1.4 | 2024.05.21 | 支持溢出页, 子分区             |
-| v1.5 | 2024.07.10 | vector and instant BUG |
-| v1.6 | 2024.09.19 | 修复一些bug                |
-| v1.7 | 2024.10.29 | 1.修复一些bug <br />2.支持压缩页 <br />3.支持drop table的恢复  <br />4.ucs2,utf16,utf32 字符集支持             |
-| v1.8    | 2024.11.09 | 1. 支持所有字符集<br />2. 支持kering 插件加密的表 <br />3. 支持web控制台查看数据结构 <br />4. 支持修改lower_case_table_names|
-| v1.9    | 2025.02.21 | 修复已知BUG, 支持直接解析5.7的ibd文件|
-| v1.10    | 2025.04.16 | 修复已知BUG, 添加快速统计表行数的脚本|
-| v1.11    | 2025.06.13 | 修复已知BUG, 设置--foce 为遍历整个数据文件(1. 跳过坏块 2.ibd文件不完整 3. delete page被剔除btree+)|
-| v1.12    | 2025.08.30 | 修复已知BUG,并使用性能提升20%|
+环境说明: MySQL 8.0.28  Python 3.10.4 CPU MHz: 2688.011 
 
-详情: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
+| ibd2sql VERSION | PARALLEL | RATE                   |
+| --------------- | -------- | ---------------------- |
+| 2.0             | 1        | 50941 行每秒, 25MB/s   |
+| 2.0             | 8        | 209993 行每秒, 104MB/s |
+| 1.12            | -        | 12037 行每秒, 6MB/s    |
+| 0.3             | -        | 53998 行每秒, 26MB/s   |
+
+2000W行数据,5GB大小, 开16并发,差不多2分半解析完. 由于CPU不多,磁盘性能也不行, 所以没测出来上限是多少 -_-
+
+
+
+# 修改日志
+
+| 版本 | 更新时间 | 简述                                    |
+| ---- | -------- | --------------------------------------- |
+| 2.x  | 2025.8   | 支持范围更广, 并且性能更高, 还支持并发! |
+| 1.x  | 2024.1   | 支持所有数据类型,也支持5.7环境          |
+| 0.x  | 2023.4   | 只支持8.0的部分情况                     |
+
+完整的历史更新记录: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 
 
 
 # 要求和支持范围
 
-要求: python3
+要求: Python >= 3.6
 
-支持范围: mysql5.x 8.x 9.x
+支持: MySQL 5.6, MySQL 5.7, MySQL 8.0, MySQL 8.4. MySQL 9.x
+
+
+
+**数据备份更重要**, 事后恢复不是万能的.
+

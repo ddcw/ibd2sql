@@ -1,32 +1,14 @@
-# INTRODUCE
+# ibd2sql
 
 [中文版介绍](https://github.com/ddcw/ibd2sql/blob/main/README_zh.md)
 
-[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform mysql ibd file to sql(data). It can parse *IBD* files into *SQL* statements. ibd2sql written with Python is commonly used to learn *IBD* files and data recovery.
+[ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform MySQL IBD file to SQL(data). Write using Python3 .
 
-
-
-# FEATURE
-
-~~Simple and useful !~~
-
-Security: as long as the file has **read** permission.
-
-Comprehensiveness: **all** column types in mysql 5.x or 8.x or 9.x
-
-Simple: using Python to write packages without third-party dependencies.
-
-Useful: parse data with mark of deleted (--delete).
-
-
+When you only have IBD data file or a portion of IBD data files left, you can use `ibd2sql` to parse the data within it.
 
 
 
 # DOWNLOAD & USAGE
-
-v1.12 url : [https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.12.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v1.12.tar.gz)
-
-
 
 ## download
 
@@ -38,9 +20,11 @@ unzip main.zip
 cd ibd2sql-main
 ```
 
+
+
 **Windows**
 
-click [https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip](https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip) to download
+click https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip to download
 
 
 
@@ -49,75 +33,54 @@ click [https://github.com/ddcw/ibd2sql/archive/refs/heads/main.zip](https://gith
 **Linux**
 
 ```shell
-python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl
-# or use redirection to save data
-python3 main.py /PATH/your_dir/xxxx.ibd --sql --ddl > xxx.sql
+python3 main.py your_file.ibd --sql --ddl
 ```
+
+
 
 **Windows**
 
 Python3 is called Python on Windows
 
-Path usage '\\' instead of '/'
-
-
-
-```shell
-python main.py F:\t20240627\test\ddcw_char_ascii.ibd --sql --ddl
+```powershell
+python main.py your_file.ibd --sql --ddl
 ```
 
-**WEB CONSOLE**
-```shell
-python3 ibd2sql_web.py /PATH/your_dir/xxxx.ibd
+
+
+## WEB CONSOLE
+
+```
+python3 main.py your_file.ibd --web
 # and then, you can visit http://yourip:8080 to view that ibd file
 ```
 
-more usage:  [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
+
+
+more usage: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/main/docs/USAGE.md)
 
 
 
-# Example
+# PERFORMANCE
 
-env linux:
+env: MySQL 8.0.28  Python 3.10.4 CPU MHz: 2688.011 
 
-```shell
-# suggestion cp file to anothor OS/FS
-SHELL> cp -ra /data/mysql_3314/mysqldata/db1/test_ibd2sql.ibd /tmp
-
-SHELL> python3 main.py /tmp/test_ibd2sql.ibd --ddl --sql
-CREATE TABLE IF NOT EXISTS `db1`.`test_ibd2sql`(
-    `id` int NULL,
-    `name` varchar(127) NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci ;
-INSERT INTO `db1`.`test_ibd2sql` VALUES (1, 'ddcw');
-INSERT INTO `db1`.`test_ibd2sql` VALUES (2, 'ibd2sql v1.5');
-
-```
-
-more example: [docs/ALLTEST.md](https://github.com/ddcw/ibd2sql/blob/main/docs/ALLTEST.md)
+| ibd2sql VERSION | PARALLEL | RATE                   |
+| --------------- | -------- | ---------------------- |
+| 2.0             | 1        | 50941 rows/s, 25MB/s   |
+| 2.0             | 8        | 209993 rows/s, 104MB/s |
+| 1.12            | -        | 12037 rows/s, 6MB/s    |
+| 0.3             | -        | 53998 rows/s, 26MB/s   |
 
 
 
 # CHANGE LOG
 
-| VERSION | UPDATE     | NOTE                                     |
-| ------- | ---------- | ---------------------------------------- |
-| v0.1    | 2023.4.27  | first version                            |
-| v0.2    | 2023.08.30 | support more data types                  |
-| v0.3    | 2023.10.13 | support parse file from 5.x upgrade to 8.x |
-| v1.0    | 2024.01.05 | add debug and support more data types    |
-| v1.1    | 2024.04.12 | fix some bugs                            |
-| v1.2    | 2024.04.25 | add support of geometry data types       |
-| v1.3    | 2024.05.11 | add support 5.x                          |
-| v1.4    | 2024.05.21 | add support extra page and subpartition  |
-| v1.5    | 2024.07.10 | add support vector data types and fix INSTANT bug |
-| v1.6    | 2024.09.19 | fix some bugs |
-| v1.7    | 2024.10.29 | fix some bugs&support compress page&support recovery **drop table** & support ucs2,utf16,utf32 charset |
-| v1.8    | 2024.11.09 | support keyring plugin encryption & all character set|
-| v1.9    | 2025.02.21 | fix some bugs & support direct parsing of 5.x files|
-| v1.10    | 2025.04.16 | fix some bugs & add super_fast_count.py|
-| v1.11    | 2025.06.13 | fix some bugs & make `--force` to view page one by one for skip BAD BLOCK |
-| v1.12    | 2025.08.30 | fix some bugs and improve performance by over 20% |
+| VERSION | UPDATE | NOTE                                                       |
+| ------- | ------ | ---------------------------------------------------------- |
+| 2.x     | 2025.8 | Support for more situations and improvement in performance |
+| 1.x     | 2024.1 | Supports complete data types and 5.7                       |
+| 0.x     | 2023.4 | Only supports partial cases of 8.0                         |
 
 detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANGELOG.md)
 
@@ -125,6 +88,8 @@ detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/main/docs/CHANG
 
 # REQUIRE & SUPPORT
 
-require: python3
+require: Python >= 3.6
 
-support range: mysql5.x 8.x 9.x
+support: MySQL 5.6, MySQL 5.7, MySQL 8.0, MySQL 8.4. MySQL 9.x
+
+**Data backup is very important**

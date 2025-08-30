@@ -1,406 +1,485 @@
-#!/usr/bin/env python3
-
-import datetime
-from ibd2sql.innodb_page_sdi import *
-from ibd2sql.innodb_page_spaceORxdes import *
-from ibd2sql.innodb_page_inode import *
-from ibd2sql.innodb_page_index import *
-from ibd2sql import lz4
-from ibd2sql import AES
+import struct
+import json
+import glob
 import sys
+import os
+from ibd2sql.innodb_page.sdi import SDI
+from ibd2sql.innodb_page.page import PAGE
+from ibd2sql.innodb_page.page import PAGE_READER
+from ibd2sql.innodb_page.fsp import GET_FSP_STATUS_FROM_FLAGS
+from ibd2sql.innodb_page.fsp import FSP
+from ibd2sql.innodb_page.fsp import PARSE_ENCRYPTION_INFO
+from ibd2sql.utils.keyring_file import READ_KEYRING
+from ibd2sql.frm.frm2sdi import MYSQLFRM
 
+from ibd2sql.innodb_page.inode import INODE
+from ibd2sql.innodb_page.index import INDEX
+from ibd2sql.innodb_page.table import TABLE
 
-class ibd2sql(object):
-	def __init__(self,*args,**kwargs):
-		self.LIMIT = -1
-		self.STATUS = False
-		self.PAGESIZE = 16384
-		#先初始化一堆信息.
-		self.DEBUG = False
-		self.DEBUG_FD = sys.stdout
-		self.FILENAME = ''
-		self.DELETE = False
-		self.FORCE = False
-		self.SET = False
-		self.MULTIVALUE = False
-		self.COMPLETE_SQL = False
-		self.REPLACE = False
-		self.WHERE1 = ''
-		self.WHERE2 = (0,2**48)
-		self.WHERE3 = (0,2**56)
-		self.PAGE_ID = 0
-		self.AUTO_DEBUG = True #自动DEBUG, 如果page解析有问题的话, 然后退出
-		self.SQL_PREFIX = ''
-		self.SQL = True
-		self.IS_PARTITION = False #是否为分区表
+import ctypes
+from multiprocessing import Process
+from multiprocessing import Value
+from multiprocessing import Lock
 
-		self.PAGE_MIN = 0
-		self.PAGE_MAX = 2**32
-		self.PAGE_START = -1
-		self.PAGE_COUNT = -1
-		self.PAGE_SKIP = -1
-		self.MYSQL5 = False # 标记是否为MYSQL 5.7的, 其实没必要的, 只是我懒得去看以前的shit了... 那就堆shit吧 -_-
-
-		# 加密相关的
-		self.ENCRYPTED = False
-		self.KEY = b'\x00'*32
-		self.IV = b'\x00'*16
-
-
-	def _init_table_name(self):
-		try:
-			self.debug(f"OLD TABLENAME:{self.tablename}")
-		except:
-			pass
-		self.tablename = f"`{self.table.schema}`.`{self.table.table_name}`"
-		self.debug(f"NEW TABLENAME:{self.tablename}")
-		self._init_sql_prefix()
-
-	def replace_schema(self,name):
-		self.table.schema = name
-		return self._init_table_name()
-
-	def replace_name(self,name):
-		self.table.table_name = name
-		return self._init_table_name()
-
-	def read(self):
-		"""
-		RETURN PAGE RAW DATA
-		"""
-		self.debug(f"ibd2sql.read PAGE: {self.PAGE_ID} ")
-		self.f.seek(self.PAGESIZE*self.PAGE_ID,0)
-		#self.PAGE_ID += 1
-		#return self.f.read(self.PAGESIZE)
-		# FOR COMPRESS PAGE
-		data = self.f.read(self.PAGESIZE)
-		if data[24:26] == b'\x00\x0e': # 14: 压缩页, 先解压
-			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
-			if FIL_PAGE_ALGORITHM_V1 == 1:
-				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + zlib.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1])
-			elif FIL_PAGE_ALGORITHM_V1 == 2:
-				data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + lz4.decompress(data[38:38+FIL_PAGE_COMPRESS_SIZE_V1],FIL_PAGE_ORIGINAL_SIZE_V1)
-			else:
-				pass
-		elif data[24:26] == b'\x00\x0f': # 15: 加密页
-			FIL_PAGE_VERSION,FIL_PAGE_ALGORITHM_V1,FIL_PAGE_ORIGINAL_TYPE_V1,FIL_PAGE_ORIGINAL_SIZE_V1,FIL_PAGE_COMPRESS_SIZE_V1 = struct.unpack('>BBHHH',data[26:34])
-			data = data[:24] + struct.pack('>H',FIL_PAGE_ORIGINAL_TYPE_V1) + b'\x00'*8 + data[34:38] + AES.aes_cbc256_decrypt(self.KEY,data[38:-10],self.IV) + AES.aes_cbc256_decrypt(self.KEY,data[-32:],self.IV)[-10:]
-		return data
-
-	def _init_sql_prefix(self):
-		#self.table.remove_virtual_column() #把虚拟字段干掉
-		#self.SQL_PREFIX = f"{ 'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}{'(`'+'`,`'.join([ self.table.column[x]['name'] for x in self.table.column ]) + '`)' if self.COMPLETE_SQL else ''} VALUES "
-		SQL_PREFIX = f"{'REPLACE' if self.REPLACE else 'INSERT'} INTO {self.tablename}("
-		for x in self.table.column:
-			if 'hidden' in self.table.column[x] and self.table.column[x]['hidden'] > 1:
-				continue
-			if self.table.column[x]['generation_expression'] != "":
-				continue
-			if self.table.column[x]['is_virtual'] or not self.COMPLETE_SQL or self.table.column[x]['version_dropped'] > 0:
-				continue
-			else:
-				SQL_PREFIX += f"`{self.table.column[x]['name']}`,"
-		SQL_PREFIX = SQL_PREFIX[:-1] + ") VALUES " if self.COMPLETE_SQL else SQL_PREFIX[:-1] + " VALUES "
-		self.SQL_PREFIX = SQL_PREFIX
-
-	def init(self):
-		self.debug("DEBUG MODE ON")
-		self.debug("INIT ibd2sql")
-		self.debug("FORCE",self.FORCE)
-		self.debug("SET",self.SET)
-		self.debug("MULTIVALUE",self.MULTIVALUE)
-		self.debug("AUTO_DEBUG",self.AUTO_DEBUG)
-		self.debug(f"FILTER: \n\t{self.WHERE1}    \n\t{self.WHERE2[0]} < TRX < {self.WHERE2[1]}    \n\t{self.WHERE3[0]} < ROLLPTR < {self.WHERE3[1]}")
-		self.STATUS = True
-		self.debug(f"OPEN IBD FILE:",self.FILENAME)
-		self.f = open(self.FILENAME,'rb')
-		self.PAGE_ID = 0
-
-		#first page
-		if not self.MYSQL5:
-			self.PAGE_ID = 0
-			self.debug("ANALYZE FIRST PAGE: FIL_PAGE_TYPE_FSP_HDR")
-			self.space_page = xdes(self.read()) #第一页
-			if not self.space_page.fsp_status:
-				sys.stderr.write(f"\nrow_format = compressed or its damaged or its mysql 5.7 file\n\n")
-				sys.exit(2)
-			self.debug("ANALYZE FIRST PAGE FINISH")
-			sdino = self.space_page.SDI_PAGE_NO
-			self.debug("SDI PAGE NO:",sdino)
-
-		#sdi page
-		if self.IS_PARTITION:
-			self.debug("THIS TABLE IS PARTITION TABLE")
-			self.tablename = "PARTITION TABLE NO NAME"
-			pass
+def GET_LEAF_PAGE_NO_FROM_SDI(pg,pageid):
+	while True:
+		data = pg.read(pageid)
+		if data[64:66] == b'\x00\x00':
+			break
 		else:
-			self.debug('ANALYZE SDI PAGE')
-			self.PAGE_ID = sdino
-			self.sdi = sdi(self.read(),debug=self.debug,filename=self.FILENAME) #sdi页
-			if not self.sdi:
-				self.debug("ANALYZE SDI PAGE FAILED (maybe page is not 17853), will exit 2")
-				sys.exit(2)
-			self.debug('ANALYZE SDI PAGE FINISH')
-			self.debug('SET ibd2sql.table = sdi.table (SDI的使命已结束 >_<)')
-			self.table = self.sdi.table
-			self.tablename = self.table.name
-			self.debug("META INFO")
-			for colno in self.table.column:
-				self.debug(f"COLNO: {colno}  \n{self.table.column[colno]}")
-			for idxno in self.table.index:
-				self.debug(f"IDXNO: {colno}  \n{self.table.index[idxno]}")
-			self.debug("INIT SQL PREFIX")
-			self.debug("DDL:\n",self.table.get_ddl())
-			self._init_sql_prefix() #初始化表前缀, 要获取到SDI信息才能做
+			offset = 99
+			offset += struct.unpack('>h',data[offset-2:offset])[0]
+			dtype,table_id,pageid = struct.unpack('>LQL',data[offset:offset+16])
+	return pageid
 
-		#inode page
-		self.debug(f'ANALYZE PAGE INODE (PAGE_ID=2) (for get index)')
-		self.PAGE_ID = 2 #inode
-		self.inode = inode(self.read(),MYSQL5=self.MYSQL5)
-		self.debug("FIRST INDEX (Non-leaf and leaf page) :",self.inode.index_page[0]," (-1 is None)")
-		self.first_no_leaf_page = self.inode.index_page[0][0]
-		self.first_leaf_page = self.inode.index_page[0][1] 
-		#self.debug("START FIND FIRST LEAF PAGE")
-		will_get_leaf_page = True # issue 53
-		if self.first_leaf_page != 4294967295:
-			self.PAGE_ID = self.first_leaf_page
-			first_leaf_page = self.read()
-			_page_level = struct.unpack('>9HQHQ',first_leaf_page[38:][:36])[-2]
-			if _page_level == 0 and first_leaf_page[24:26] == b'E\xbf':
-				 will_get_leaf_page = False
-		if self.first_leaf_page < 3 or self.first_leaf_page >= 4294967295 or will_get_leaf_page:
-			self.init_first_leaf_page()
-		self.debug("FIRST LEAF PAGE ID:",self.first_leaf_page )
-		self.debug("#############################################################################")
-		self.debug("                  INIT ibd2sql FINISH                                        ")
-		self.debug("#############################################################################\n\n")
-		return True
+class IBDBASE(object):
+	def __init__(self,filename,log,kd):
+		self.status = False
+		f = open(filename,'rb')
+		data = f.read(1024)
+		if len(data) != 1024:
+			log.error(filename,'is too small ...')
+			return None
+		if data[24:26] != b'\x00\x08':
+			log.info(f'{filename} version may be is too low') # 5.0 ?
+			self.status = False
+		FSP_SPACE_ID,FSP_NOT_USED,FSP_SIZE,FSP_FREE_LIMIT,FSP_SPACE_FLAGS,FSP_FRAG_N_USED = struct.unpack('>6L',data[38:62])
+		self.fsp_flags = GET_FSP_STATUS_FROM_FLAGS(FSP_SPACE_FLAGS)
 
-	def init_first_leaf_page(self):
-		_n = 0
-		self.debug(f"INIT FIRST PAGE TO FIRST_NO_LEAF_PAGE ({self.first_no_leaf_page})")
-		self.PAGE_ID = self.first_no_leaf_page
-		while self.PAGE_ID < 4294967295 and self.PAGE_ID > 2:
-			_n += 1
-			self.debug(f'COUNT: {_n} FIND LEAF PAGE, CURRENT PAGE ID:',self.PAGE_ID)
-			aa = find_leafpage(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug)
-			aa.pageno = self.PAGE_ID
-			IS_LEAF_PAGE,PAGE_ID = aa.find()
-			if IS_LEAF_PAGE:
-				self.debug("FIND FINISH, PAGE_ID:",self.PAGE_ID,'\n')
-				self.first_leaf_page = self.PAGE_ID
-				break
-			else:
-				self.first_leaf_page = self.PAGE_ID = PAGE_ID
-			
+		self.logical_size = self.fsp_flags['logical_size']
+		self.physical_size = self.fsp_flags['physical_size']
+		self.page_size = self.physical_size
+		self.compressed = self.fsp_flags['compressed']
+		self.compression_ratio = self.logical_size//self.physical_size
 
-	def debug(self,*args):
-		if self.DEBUG:
-			msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [DEBUG] {' '.join([ str(x) for x in args ])}\n"
-			self.DEBUG_FD.write(msg)
+		self.ENCRYPTION = True if self.fsp_flags['ENCRYPTION'] == 1 else False
+		self.SDI = True if self.fsp_flags['SDI'] == 1 else False # True: >=8.0 False: <=5.7
+		self.SHARED = True if self.fsp_flags['SHARED'] == 1 else False  # shared tablespace
+		self.POST_ANTELOPE = self.fsp_flags['POST_ANTELOPE'] # innodb file format 0:compact/redundant 1:dynamic/compressed
 
-	def _get_index_page(self):
-		pn = 0
-		while self.PAGE_ID > 0 and self.PAGE_ID < 4294967295:
-			pn += 1
-			self.debug(f"CURRENT PAGE ID {self.PAGE_ID}     PAGE NO:{pn}")
-			aa = page(self.read())
-			self.PAGE_ID = aa.FIL_PAGE_NEXT
+		log.info(filename,'logical_size',self.logical_size)
+		log.info(filename,'physical_size',self.physical_size)
+		log.info(filename,'compressed',self.compressed)
+		log.info(filename,'ENCRYPTION',self.ENCRYPTION)
+		log.info(filename,'SDI',self.SDI)
+		log.info(filename,'SHARED',self.SHARED)
+		log.info(filename,'POST_ANTELOPE',self.POST_ANTELOPE)
 
-	def get_sql(self,):
-		self.PAGE_ID = self.PAGE_START if self.PAGE_START  > 2 else self.first_leaf_page
-		self.MULTIVALUE = False if self.REPLACE else self.MULTIVALUE #冲突
-		if self.FORCE:
-			self.debug("============================= WARNING ================================")
-			self.debug("========================== FORCE IS TRUE =============================")
-			self.debug("============================= WARNING ================================")
-			# 实现强制解析功能, 即遍历整个ibd文件, 判断idxno&page type,然后强制解析.(跳过坏块)
-			#rootpageno = int(self.table.index[self.table.cluster_index_id]['options']['root'])
-			rootpageno = self.inode.index_page[0][0] # issue 72
-			self.PAGE_ID = rootpageno
-			indexpagedata = self.read()
-			B_PAGE_INDEX_ID = indexpagedata[38:38+56][28:28+8]
-			import os
-			from ibd2sql import CRC32C
-			total_pages = os.path.getsize(sys.argv[1])//16384
-			NEXT_PAGE_ID = 3
-			sql = self.SQL_PREFIX
-			while NEXT_PAGE_ID < total_pages:
-				self.PAGE_ID = NEXT_PAGE_ID
-				try:
-					indexdata = self.read() # 读取页的时候可能就是坏块了
-				except:
-					NEXT_PAGE_ID += 1
-					continue
-				NEXT_PAGE_ID += 1
-				if indexdata[24:26] == b'E\xbf' and indexdata[66:74] == B_PAGE_INDEX_ID and indexdata[64:66] == b'\x00\x00':
-					checksum_field1 = struct.unpack('>L',indexdata[:4])[0]
-					checksum_field2 = struct.unpack('>L',indexdata[-8:-4])[0]
-					c1 = CRC32C.crc32c(indexdata[4:26])
-					c2 = CRC32C.crc32c(indexdata[38:16384-8])
-					if checksum_field1 == checksum_field2 == (c1^c2)&(2**32-1): # 坏块就不解析了
-						aa = index(indexdata,table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f,DEBUG=self.DEBUG)
-						aa.pageno = self.PAGE_ID
-						aa.DELETED = True if self.DELETE else False
-						_tdata = aa.read_row()
-						for x in _tdata:
-							_sql = f"{sql}{self._tosql(x['row'])};"
-							if self.LIMIT == 0:
-								return None
-							else:
-								print(_sql)
-								self.LIMIT -= 1
-			sys.exit(0)
-		self.debug("ibd2sql get_sql BEGIN:",self.PAGE_ID,self.PAGE_MIN,self.PAGE_MAX,self.PAGE_COUNT)
-		while self.PAGE_ID > self.PAGE_MIN and self.PAGE_ID <= self.PAGE_MAX and self.PAGE_ID < 4294967295 and self.PAGE_COUNT != 0:
-			self.debug("INIT INDEX OBJECT")
-			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug,f=self.f,DEBUG=self.DEBUG)
-			aa.DELETED = True if self.DELETE else False
-			aa.pageno = self.PAGE_ID
-			self.debug("SET FILTER",self.WHERE2,self.WHERE3)
-			aa.mintrx = self.WHERE2[0]
-			aa.maxtrx = self.WHERE2[1]
-			aa.minrollptr = self.WHERE3[0]
-			aa.maxrollptr = self.WHERE3[1]
-			self.PAGE_ID = aa.FIL_PAGE_NEXT
+		if os.path.getsize(filename)%self.physical_size != 0: # not faild
+			log.warning(filename,'maybe have been damaged')
 
-			if self.PAGE_SKIP > 0:
-				self.PAGE_SKIP -= 1
-				self.debug("SKIP THIS PAGE")
-				continue
-			self.PAGE_COUNT -= 1
+		f.seek(0,0)
+		self.fsp = FSP(f.read(self.physical_size),self.logical_size,self.compression_ratio)
+		f.close()
 
-			sql = self.SQL_PREFIX
-			if self.MULTIVALUE:
-				try:
-					_tdata = aa.read_row()
-				except Exception as e:
-					if self.FORCE:
-						continue
-					else:
-						self.debug(e)
-						break
-				for x in _tdata:
-					if self.LIMIT == 0:
-						return None
-					self.LIMIT -= 1
-					sql += self._tosql(x['row']) + ','
-				sql = (sql[:-1] + ';')
-				print(sql)
-				
-			else:
-				try:
-					_tdata = aa.read_row()
-				except Exception as e:
-					if self.FORCE:
-						continue
-					else:
-						self.debug(e)
-						break
-				for x in _tdata:
-					if self.LIMIT == 0:
-						return None
-					self.LIMIT -= 1
-					_sql = f"{sql}{self._tosql(x['row'])};"
-					print(_sql)
-			if self.PAGE_COUNT == 0:
-				break
-			
+		self.key = None
+		self.iv = None
+		if self.ENCRYPTION:
+			try:
+				t = PARSE_ENCRYPTION_INFO(self.fsp.encryption_info,kd)
+				self.key = t['key']
+				self.iv = t['iv']
+				log.info('key',self.key.hex())
+				log.info('iv',self.iv.hex())
+			except Exception as e:
+				log.error(filename,'master_key not in',kd,'exception:',e)
+				return None
 
-	def test(self):
-		"""
-		TEST ONLY
-		"""
-		#self.DEBUG = False
-		self.debug('AUTO TEST\n\n\n##########################################################\n\t\tBEGIN TEST -_- \n##########################################################\n\n')
-		#self.PAGE_ID = 4
-		self.debug('CLUSTER INDEX ID:',self.table.cluster_index_id)
-		self.debug('FIRST LEAF PAGE:',self.first_leaf_page)
-		self.PAGE_ID = self.first_leaf_page
+		self.pg = PAGE_READER(page_size=self.physical_size,filename=filename,encryption=self.ENCRYPTION,key=self.key,iv=self.iv)
+		self.sdi = None
+		if self.SDI:
+			#sdi = SDI(self.fsp.SDI_PAGE_NO,self.pg,'COMPRESSED' if self.compressed == 1 else '1')
+			sdi = SDI(GET_LEAF_PAGE_NO_FROM_SDI(self.pg,self.fsp.SDI_PAGE_NO),self.pg,'COMPRESSED' if self.compressed == 1 else '1')
+			try:
+				self.sdi = sdi.get_sdi()
+			except Exception as e:
+				log.error(filename,'get sdi faild',e)
+				return None
 
-		self.debug('ANALYZE INDEX PAGE BEGIN: (FIRST LEAF PAGE):',self.PAGE_ID)
-		#DATA
-		_n = 0
+		self.status = True
 
-		#self.replace_schema('db2')
-		#aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug)
-		pc = -1 #页数限制, 方便DEBUG
-		sp = 2329 #跳过的page数量  也是方便DEBUG的
-		sp = 0
-		#self.PAGE_ID = 2361
-		self.MULTIVALUE = False if self.REPLACE else self.MULTIVALUE
-		while self.PAGE_ID > 0 and self.PAGE_ID < 4294967295 and pc != 0:
-			aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, debug=self.debug)
-			sp -= 1
-			if sp >= 0:
-				self.PAGE_ID = aa.FIL_PAGE_NEXT
-				continue
-			#aa = index(self.read(),table=self.table, idx=self.table.cluster_index_id, )
-			aa.pageno = self.PAGE_ID
-			aa.mintrx = self.WHERE2[0]
-			aa.maxtrx = self.WHERE2[1]
-			sql = self.SQL_PREFIX
-			if self.MULTIVALUE:
-				for x in aa.read_row():
-					sql += self._tosql(x['row']) + ','
-					_n += 1
-				print(sql[:-1],';')
-			else:
-				for x in aa.read_row():
-					print(f"{sql}{self._tosql(x['row'])};")
-					_n += 1
-			self.PAGE_ID = aa.FIL_PAGE_NEXT
-			pc -= 1
-			#break
-		self.debug('TOTAL ROWS:',_n)
-
-	def get_ddl(self):
-		return self.table.get_ddl()
-
-	def _tosql(self,row):
-		"""
-		把 row 转为SQL, 不含INSERT INTO ;等  主要是数据类型引号处理
-		"""
-		sql = '('
-		for colno in self.table.column:
-			if 'hidden' in self.table.column[colno] and self.table.column[colno]['hidden'] > 1:
-				continue
-			if self.table.column[colno]['generation_expression'] != "":
-				continue
-			if self.table.column[colno]['is_virtual']:
-				continue
-			if self.table.column[colno]['version_dropped'] > 0:
-				continue
-			data = row[colno]
-			if data is None:
-				sql  = f"{sql}NULL, "
-			elif self.table.column[colno]['type'].startswith('varbinary(') or self.table.column[colno]['type'] in ['tinyblob','blob','mediumblob','longblob']:
-				sql  = f"{sql}{data}, "
-			elif self.table.column[colno]['ct'] in ['tinyint','smallint','int','float','double','bigint','mediumint','year','decimal','vector'] :
-				sql  = f"{sql}{data}, "
-			elif (not self.SET) and (self.table.column[colno]['ct'] in ['enum','set']):
-				sql  = f"{sql}{data}, "
-			elif self.table.column[colno]['ct'] == 'geom':
-				extra_srsid = f"{self.table.column[colno]['srs_id']:08x}" if self.table.column[colno]['srs_id'] == 0 else ''
-				sql = f"{sql}0x{extra_srsid}{hex(data)[2:]}, "
-			elif self.table.column[colno]['ct'] == 'binary':
-				sql = f"{sql}{hex(data)}, " #转为16进制, 好看点,但没必要, 就int吧
-			else:
-				sql += repr(data) + ", "
-	
-		return sql[:-2] + ")"
-
-	def _get_first_page(self,):
+	def test(self,):
 		pass
 
-	def close(self):
-		try:
-			self.f.close()
-		except:
+
+def GET_PARTITION_TABLE_SDIDATA(filename_t,log,kd):
+	filename_re = filename_t.split('#')[0] + "#" + "*.ibd"
+	for filename in glob.glob(filename_re):
+		if filename == filename_t:
+			continue
+		if os.path.isfile(filename):
+			ibdbase = IBDBASE(filename,log,kd)
+			if ibdbase.status:
+				if ibdbase.sdi is not None and len(ibdbase.sdi) == 2:
+					return ibdbase.sdi[0]
+	return None
+
+def FORMAT_IBD_FILE(filename_list,sdi_file,keyring_file,log):
+	"""
+	INPUT:
+		filename_list: ibd/frm/sdi file list
+		sdi_file: sdi file(ibd/frm/sdi)
+		keyring_file: keyring filename
+		log: log
+
+	RETURN:
+		[
+			{
+				'filename':xx,
+				'sdi':sdi info (dict),
+				'key':key,
+				'iv':'iv',
+				'pagesize': page size(phy),
+				'partition_name':''
+			},
+		]
+	"""
+
+	kd = {}
+	if keyring_file is not None:
+		with open(keyring_file,'rb') as f:
+			kd = READ_KEYRING(f.read())
+
+	global_sdi_info = None
+	if sdi_file is not None:
+		if sdi_file.endswith('.frm'):
+			log.info(sdi_file,'maybe frm')
+			global_sdi_info = sdidata = json.loads(MYSQLFRM(sdi_file)._get_sdi_json())
+			log.info(sdi_file,'global_sdi_info is frm file')
+		elif sdi_file.endswith('.sdi'):
+			log.info(sdi_file,'maybe sdi')
+			with open(sdi_file,'r') as f:
+				global_sdi_info = json.load(f)
+			if len(global_sdi_info) == 3:
+				global_sdi_info = global_sdi_info[1]
+			log.info(sdi_file,'global_sdi_info is sdi file')
+		elif sdi_file.endswith('.ibd'):
+			log.info(sdi_file,'maybe ibd')
+			ibdbase = IBDBASE(sdi_file,log,kd)
+			global_sdi_info = ibdbase.sdi[0]
+
+	file_list = []
+	for filename in filename_list:
+		if filename[-3:] != 'ibd':
+			log.error(filename,'not endswith .ibd, skip it')
+			continue
+		ibdbase = IBDBASE(filename,log,kd)
+		if (ibdbase is None or not ibdbase.status) and len(filename_list) > 1:
+			log.error('skip file:',filename)
+			continue
+
+		partition_name = None
+		sdidata = None
+		if not ibdbase.status or not ibdbase.SDI: #and ibdbase.fsp.FIL_PAGE_PREV in [0,4294967295] and ibdbase.fsp.FIL_PAGE_NEXT in [0,4294967295]: # 5.x
+			log.info(filename,'is mysql 5, will get sdi....',)
+			partition_offset = filename.find('#')
+			frm_filename = ''
+			if partition_offset > 0:
+				frm_filename = filename[:partition_offset]+'.frm'
+				partition_name = filename[partition_offset:-4]
+				log.info(filename,'is partition table')
+			else:
+				frm_filename = filename[:-4]+'.frm'
+			if os.path.exists(frm_filename):
+				log.info(filename,'will use frm file:',frm_filename)
+				sdidata = json.loads(MYSQLFRM(frm_filename)._get_sdi_json())
+				log.info(filename,'ADD TABLE',sdidata['dd_object']['schema_ref'],sdidata['dd_object']['name'])
+			else:
+				log.warning('frm file',frm_filename,'not exists')
+				if global_sdi_info is not None:
+					log.warning(filename,'use global_sdi_info',sdi_file)
+					sdidata = global_sdi_info
+				else:
+					log.error(filename,'have not sdi info, skip it')
+					continue
+		elif ibdbase.fsp.FIL_PAGE_PREV > 80000 and ibdbase.fsp.FIL_PAGE_NEXT == 1: # 8.x
+			log.info(filename,'mysql version:',ibdbase.fsp.FIL_PAGE_PREV)
+			if ibdbase.SHARED: # such as : mysql.ibd
+				log.info(filename,'is shared')
+				for x in ibdbase.sdi:
+					if 'dd_object' not in x or 'schema_ref' not in x['dd_object']:
+						continue
+					log.info(filename,'ADD TABLE',x['dd_object']['schema_ref'],x['dd_object']['name'])
+					file_list.append({
+						'filename':filename,
+						'sdi':x,
+						'encryption':ibdbase.ENCRYPTION,
+						'key':ibdbase.key,
+						'iv':ibdbase.iv,
+						'pagesize':ibdbase.physical_size,
+						'partition_name':partition_name,
+						'fsp_flags':ibdbase.fsp_flags,
+					})
+				continue
+			else:
+				sdi_count = len(ibdbase.sdi)
+				if sdi_count == 1: # partition
+					log.info(filename,'is partition table',)
+					sdidata = GET_PARTITION_TABLE_SDIDATA(filename,log,kd)
+					if sdidata is None:
+						if global_sdi_info is None:
+							log.error(filename,'can not find sdi info, skip it')
+							continue
+						else:
+							sdidata = global_sdi_info
+							log.info(filename,'use global sdi',sdi_file)
+					else:
+						log.info(filename,'ADD TABLE',sdidata['dd_object']['schema_ref'],sdidata['dd_object']['name'])
+				elif sdi_count == 2:
+					if 'schema_ref' in ibdbase.sdi[0]['dd_object']:
+						sdidata = ibdbase.sdi[0]
+					else:
+						sdidata = ibdbase.sdi[1]
+			
+					log.info(filename,'ADD TABLE',sdidata['dd_object']['schema_ref'],sdidata['dd_object']['name'])
+				else:
+					log.error('unknown error when read sdi',sdi_count)
+					continue
+		else:
+			log.error('skip file',filename,ibdbase.SDI,ibdbase.fsp.FIL_PAGE_PREV,ibdbase.fsp.FIL_PAGE_NEXT)
+			continue
+
+		file_list.append({
+			'filename':filename,
+			'sdi':sdidata,
+			'encryption':ibdbase.ENCRYPTION,
+			'key':ibdbase.key,
+			'iv':ibdbase.iv,
+			'pagesize':ibdbase.physical_size,
+			'partition_name':partition_name,
+			'fsp_flags':ibdbase.fsp_flags,
+		})
+	return file_list
+
+class IBD2SQL(object):
+	def __init__(self,pg,pageid,force=False,v=None):
+		self.pg = pg
+		self.pageid = pageid
+		self.pageid = pageid
+		self.force = force
+		self.v = v
+		if force and v is None:
+			self._read_page = self._read_page_add1
+		elif force and v is not None:
+			self._read_page = self._read_page_share_add1
+		elif not force and v is None:
 			pass
-		try:
-			if self.DEBUG:
-				self.DEBUG_FD.close()
-		except:
-			pass
-		return True
+		elif not force and v is not None:
+			self._read_page = self._read_page_share
+
+	def read(self):
+		data = self._read_page()
+		if len(data) != self.pg.PAGE_SIZE:
+			return False,data
+		else:
+			return True,data
+
+	def _read_page(self,):
+		data = self.pg.read(self.pageid)
+		self.pageid = struct.unpack('>L',data[12:16])[0]
+		return data
+
+	def _read_page_share(self,): # parallel
+		pass
+
+	def _read_page_add1(self,): # force
+		data = self.pg.read(self.pageid)
+		self.pageid += 1
+		return data
+
+	def _read_page_share_add1(self,): # force & parallel
+		pass
+
+def FIND_LEAF_PAGE_FROM_ROOT(pg,pageid,table,page_type='PK_NON_LEAF',idxid=0):
+	idx = INDEX()
+	idx.init_index(table=table,idxid=idxid,pg=pg,page_type=page_type)
+	while True:
+		data = pg.read(pageid)
+		if data[64:66] == b'\x00\x00':
+			break
+		idx.init_data(data)
+		pageid = idx.get_all_rows()[0]['pageid']
+	return pageid
+
+def ROTAED_FILE(f,log,action='w'):
+	filename = f.name
+	findex = filename.find('.p0')
+	f.close()
+	if findex > 0 and len(filename[findex:]) == 10:
+		newfilename = filename[:findex+2] + str(int(filename[findex+2:])+1).zfill(8)
+	else:
+		newfilename = filename + ".p00000001"
+		os.rename(filename,filename + ".p00000000")
+	log.info('rotate new file, name:',newfilename)
+	newf = open(newfilename,action)
+	return newf
+
+def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
+	writed_size = 0 # rotaed
+	writed_rows = 0
+	usehex = True if 'hex' in opt else False
+	if 'lines-terminated-by' in opt:
+		enclosed_by = opt['lines-terminated-by']
+	elif parser.SQL == 'data':
+		enclosed_by = '\n'
+	else:
+		enclosed_by = ';\n'
+	fields_terminated = opt['fields-terminated-by'] if 'fields-terminated-by' in opt else ','
+	LIMIT = parser.LIMIT if parser.LIMIT is not None else -1 # limit
+	OUTPUT_FILESIZE = parser.OUTPUT_FILESIZE
+	FORCE = parser.FORCE
+	HAVE_DATA = True
+	HAVE_DELETED = False
+	if parser.DELETED == 'only' or parser.DELETED == True:
+		HAVE_DELETED = True
+		HAVE_DATA = False
+	if parser.DELETED == 'with':
+		HAVE_DELETED = True
+	PAGE_INDEX_ID = b'\x00'*8
+	pg = PAGE_READER(page_size=file_base['pagesize'],filename=file_base['filename'],encryption=file_base['encryption'],key=file_base['key'],iv=file_base['iv'])
+	# inode
+	inode = INODE(pg)
+	if 'rootno' in opt:
+		rootno = int(opt['rootno'])
+	elif file_base['fsp_flags']['SHARED']:
+		rootno = int(file_base['sdi']['dd_object']['indexes'][0]['root'])
+	else:
+		rootno = inode.seg[0][0]['FSEG_FRAG_ARR'][0] if file_base['fsp_flags']['SDI'] == 0 else inode.seg[1][0]['FSEG_FRAG_ARR'][0]
+	#if file_base['fsp_flags']['SDI'] == 1: # 8.x
+	#	rootno = inode.seg[1][0]['FSEG_FRAG_ARR'][0]
+	log.info(file_base['filename'],file_base['sdi']['dd_object']['name'],'ROOT PAGEID:',rootno)
+	# FIND LEAF PAGE
+	if 'leafno' in opt:
+		leafno = int(opt['leafno'])
+	else:
+		leafno = FIND_LEAF_PAGE_FROM_ROOT(pg,rootno,table)
+	log.info(file_base['filename'],'LEAF PAGEID:',leafno)
+	leaf_page_data = pg.read(leafno)
+	PAGE_INDEX_ID = leaf_page_data[66:74]
+	if parser.PARALLEL <= 1: # single
+		# f write
+		if filename_pre != '':
+			filename = os.path.join(filename_pre,f'{table.schema}.{table.name}{file_base["partition_name"] if file_base["partition_name"] is not None else ""}_{os.getpid()}')+'_sql.sql'
+			if parser.SQL == 'data':
+				print(f"-- LOAD DATA INFILE {repr(filename)} INTO TABLE `{table.schema}`.`{table.name}` FIELDS TERMINATED BY {repr(fields_terminated)} OPTIONALLY ENCLOSED BY \"'\" LINES TERMINATED BY '\\n';")
+			f = open(filename,'a')
+			print('SQL filename,',filename)
+		else:
+			f = sys.stdout
+			log.info('output is stdout')
+			
+		# parser the rest data
+		pageid = leafno
+		idx = INDEX()
+		idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex)
+		if parser.SQL == 'data':
+			idx.get_sql = idx.get_data
+		if FORCE:
+			pages = os.path.getsize(file_base['filename'])//file_base['pagesize'] - 3
+			pg.pageid = 3
+			for _ in range(pages):
+				log.info('READ PAGE ID:',pg.pageid)
+				data = pg.read()
+				if data[24:26] != b'E\xbf' or data[64:66] != b'\x00\x00' or PAGE_INDEX_ID != data[66:74]:
+					continue
+				idx.init_data(data)
+				row = []
+				if HAVE_DATA:
+					row += idx.get_sql(False)
+				if HAVE_DELETED:
+					row += idx.get_sql(True)
+				for sql in row:
+					if LIMIT > 0:
+						f.write(sql+enclosed_by)
+						LIMIT -= 1
+					else:
+						return None
+		else:
+			while pageid < 4294967295:
+				data = pg.read(pageid)
+				log.info('READ PAGE ID:',pageid)
+				if data == b'':
+					log.error(f'read page({pageid}) faild, will exit')
+					break
+				pageid = struct.unpack('>L',data[12:16])[0] 
+				idx.init_data(data)
+				row = []
+				if HAVE_DATA:
+					row += idx.get_sql(False)
+				if HAVE_DELETED:
+					row += idx.get_sql(True)
+				for sql in row:
+					if LIMIT > 0:
+						writed_size += f.write(sql+enclosed_by)
+						LIMIT -= 1
+						if writed_size >= OUTPUT_FILESIZE:
+							f = ROTAED_FILE(f,log)
+							writed_size = 0
+					else:
+						return None
+		if filename_pre != '':
+			f.close()
+	else: # multi
+		log.info('PARALLEL:',parser.PARALLEL)
+		pageid = Value(ctypes.c_uint32, 0)
+		pageid.value = 3 if parser.FORCE else leafno
+		lock = Lock()
+		worker = {}
+		for x in range(parser.PARALLEL):
+			worker[x] = Process(target=IBD2SQL_WORKER,args=(x,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated))
+		for x in range(parser.PARALLEL):
+			worker[x].start()
+		for x in range(parser.PARALLEL):
+			worker[x].join()
+	return		
+
+def IBD2SQL_WORKER(p,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated):
+	infopre = f'PROCESS {p} (pid:{os.getpid()}):'
+	writed_size = 0
+	log.info(infopre,'START')
+	if filename_pre != '':
+		filename = os.path.join(filename_pre,f'{table.schema}.{table.name}{file_base["partition_name"] if file_base["partition_name"] is not None else ""}_p{p}_{os.getpid()}')+'_sql.sql'
+		f = open(filename,'a')
+		print(infopre,'SQL filename,',filename)
+	else:
+		f = sys.stdout
+		log.info(infopre,'output is stdout')
+	idx = INDEX()
+	pg = PAGE_READER(page_size=file_base['pagesize'],filename=file_base['filename'],encryption=file_base['encryption'],key=file_base['key'],iv=file_base['iv'])
+	idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated)
+	if parser.SQL == 'data':
+		idx.get_sql = idx.get_data
+	pages = os.path.getsize(file_base['filename'])//file_base['pagesize']
+	data = b'\x00'*file_base['pagesize'] 
+	pgid = 0
+	while True:
+		with lock:
+			pgid = pageid.value
+			if pgid > pages or pgid == 4294967295:
+				break
+			data = pg.read(pgid)
+			if parser.FORCE:
+				pageid.value = pgid + 1
+			else:
+				pageid.value = struct.unpack('>L',data[12:16])[0]
+			if data[24:26] != b'E\xbf' or data[64:66] != b'\x00\x00' or PAGE_INDEX_ID != data[66:74]:
+				continue
+		idx.init_data(data)
+		row = []
+		if HAVE_DATA:
+			row += idx.get_sql(False)
+		if HAVE_DELETED:
+			row += idx.get_sql(True)
+		for sql in row:
+			writed_size += f.write(sql+enclosed_by)
+			if writed_size >= parser.OUTPUT_FILESIZE:
+				f = ROTAED_FILE(f,log)
+				writed_size = 0
+	if filename_pre != '':
+		f.close()
+
+	log.info(infopre,'FINISH')
+
+
+def IBD2SQL_MULTI(table,file_base,opt,filename_pre,log,parser):
+	pass
