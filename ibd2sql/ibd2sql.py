@@ -338,7 +338,7 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 	PAGE_INDEX_ID = b'\x00'*8
 	pg = PAGE_READER(page_size=file_base['pagesize'],filename=file_base['filename'],encryption=file_base['encryption'],key=file_base['key'],iv=file_base['iv'])
 	# inode
-	inode = INODE(pg)
+	inode = INODE(pg) if 'rootno' not in opt else None
 	if 'rootno' in opt:
 		rootno = int(opt['rootno'])
 	elif file_base['fsp_flags']['SHARED']:
