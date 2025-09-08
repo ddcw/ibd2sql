@@ -375,11 +375,11 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 		if parser.SQL == 'data':
 			idx.get_sql = idx.get_data
 		if FORCE:
-			pages = os.path.getsize(file_base['filename'])//file_base['pagesize'] - 3
-			pg.pageid = 3
+			pages = os.path.getsize(file_base['filename'])//file_base['pagesize']
+			pg.pageid = -1
 			for _ in range(pages):
 				log.info('READ PAGE ID:',pg.pageid)
-				data = pg.read()
+				data = pg.read(_)
 				if data[24:26] != b'E\xbf' or data[64:66] != b'\x00\x00' or PAGE_INDEX_ID != data[66:74]:
 					continue
 				idx.init_data(data)
@@ -422,7 +422,7 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 	else: # multi
 		log.info('PARALLEL:',parser.PARALLEL)
 		pageid = Value(ctypes.c_uint32, 0)
-		pageid.value = 3 if parser.FORCE else leafno
+		pageid.value = 0 if parser.FORCE else leafno
 		lock = Lock()
 		worker = {}
 		for x in range(parser.PARALLEL):

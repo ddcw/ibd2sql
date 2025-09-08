@@ -286,3 +286,13 @@ python3 main.py /data/mysql_3314/mysqldata/mysql.ibd --web
 python3 main.py /data/mysql_3314/mysqldata/mysql.ibd --lctn
 ```
 
+# 碎片页/坏块/ibd文件损坏
+对于碎片页,坏块,ibd文件损坏,不完整等各种情况, 我们还可以解析出剩余数据. 只需要使用`--set rootno=0 --set leafno=0 --force`即可,当然大概率也是需要使用`--sdi`指定元数据信息的.
+```shell
+python3 main.py /tmp/t20250908_test_4_pages.ibd --sdi /data/mysql_3308/mysqldata/db1/sbtest2.frm  --sql --set leafno=0 --set rootno=0 --force
+```
+
+当然并发等选项也是可以的
+```shell
+python3 main.py /tmp/t20250908_test_4_pages.ibd --sdi /data/mysql_3308/mysqldata/db1/sbtest2.frm  --sql --set leafno=0 --set rootno=0 --force --parallel 4
+```
