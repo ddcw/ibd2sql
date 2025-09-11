@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-MYSQL_CONN='mysql -h127.0.0.1 -P3424 -uroot -p123456'
+MYSQL_CONN='mysql -h127.0.0.1 -P3314 -uroot -p123456'
 #MYSQL_CONN="/data/mysql5096/soft/mysql-5.0.96-linux-x86_64-glibc23/bin/mysql -h192.168.101.21 -P5096 -p123456 -uu1"
 SCHEMA_01='t20250828_01'
 SCHEMA_02='t20250828_02'

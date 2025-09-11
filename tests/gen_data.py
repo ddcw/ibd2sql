@@ -345,12 +345,12 @@ def test_on_update(): # on update
 
 def test_hentai_ddl():
 	ddl = """
-create table test_ibd2sql_ddl_00(
+create table if not exists test_ibd2sql_ddl_00(
 	id bigint unsigned not null primary key auto_increment,
   	name varchar(200)
 );
 
-create table test_ibd2sql_ddl_01(
+create table if not exists test_ibd2sql_ddl_01(
   `id` serial primary key auto_increment, -- serial: bigint unsigned not null
   `id_default` int default 0,
   `id_unsigned_zerofill` int unsigned zerofill,
@@ -412,6 +412,12 @@ create table test_ibd2sql_ddl_01(
 """
 	print(ddl)
 
+def test_1000_column():
+	ddl = 'drop table if exists test_ibd2sql_ddl_1000;create table if not exists test_ibd2sql_ddl_1000( id int'
+	for i in range(1000):
+		ddl += f",c{i} varchar(1) null default 'a'"
+	ddl += ");"
+	print(ddl)
 
 if __name__ == '__main__':
 	MYSQL_VERSION_ID = int(sys.argv[1]) if len(sys.argv) == 2 else 0
@@ -420,6 +426,7 @@ if __name__ == '__main__':
 	test_set()
 	test_time()
 	test_char_maxlen1()
+	test_1000_column()
 	#test_text()
 	#test_blob()
 	#test_binary()

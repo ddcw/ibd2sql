@@ -48,6 +48,7 @@ class SDI(object):
 					self.offset += struct.unpack('>h',data.data[data.offset-2:data.offset])[0]
 				if data.offset > 16384 or (data.offset == 112 and self.row_format != 'COMPRESSED'):
 					break
+				is_overflow = True if data.data[data.offset-self.rec_header_size-2:data.offset-self.rec_header_size] == b'\x14\xc0' else False
 				if self.row_format == 'COMPRESSED':
 					_t1,_t2 = struct.unpack('>BB',data.read(2))
 					if _t2 >= 128:
@@ -64,7 +65,7 @@ class SDI(object):
 				trx = (trx1<<16) + trx2
 				undo = (undo1<<24) + (undo2<<8) + undo3
 				unzbdata = b''
-				if b'\x14\xc0' == data.data[data.offset-self.rec_header_size-2:data.offset-self.rec_header_size] or data.data[data.offset:data.offset+2] == b'\x14\xc0': # overflow page
+				if is_overflow: # overflow page
 					unzbdata = b''
 					SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',data.read(20))
 					if REAL_SIZE != dzip_len:
