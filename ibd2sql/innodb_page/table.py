@@ -415,6 +415,9 @@ class TABLE(object):
 		else:
 			return {}
 
+		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB']:
+			data['is_big'] = True
+
 		# issue 8  type is char and charset is latin1, will not use varsize
 		if data['type'] == 29 and data['character_set_maxlen'] == '1':
 			data['size'] = data['char_length']

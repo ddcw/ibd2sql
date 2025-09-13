@@ -371,7 +371,7 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 		# parser the rest data
 		pageid = leafno
 		idx = INDEX()
-		idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex)
+		idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
 		if parser.SQL == 'data':
 			idx.get_sql = idx.get_data
 		if FORCE:
@@ -446,7 +446,7 @@ def IBD2SQL_WORKER(p,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,p
 		log.info(infopre,'output is stdout')
 	idx = INDEX()
 	pg = PAGE_READER(page_size=file_base['pagesize'],filename=file_base['filename'],encryption=file_base['encryption'],key=file_base['key'],iv=file_base['iv'])
-	idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated)
+	idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
 	if parser.SQL == 'data':
 		idx.get_sql = idx.get_data
 	pages = os.path.getsize(file_base['filename'])//file_base['pagesize']
