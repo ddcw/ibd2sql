@@ -296,3 +296,9 @@ python3 main.py /tmp/t20250908_test_4_pages.ibd --sdi /data/mysql_3308/mysqldata
 ```shell
 python3 main.py /tmp/t20250908_test_4_pages.ibd --sdi /data/mysql_3308/mysqldata/db1/sbtest2.frm  --sql --set leafno=0 --set rootno=0 --force --parallel 4
 ```
+
+如果针对undrop-for-innodb解析的page信息,则可以使用如下方法
+```shell
+python3 main.py /PATH/pages-vda1/ --sdi /PATH/t20250912_2.frm --set indexid=22 --sql
+```
+indexid=22 是对应 的/PATH/pages-vda1/FIL_PAGE_INDEX/0000000000000022.page 文件中的22(indexid)

@@ -406,8 +406,31 @@ if __name__ == '__main__':
 	log = LOG(parser.LOG_FILE)
 	log.info('SET:',opt)
 	log.info('INIT FILENAME')
+
+	# for fragmented page
+	FRAGMENT_PAGE = False
+	FRAGMENT_FILENAME = ''
+	FRAGMENT_FILENAME_PRE = ''
+	if os.path.isdir(parser.FILENAME[0]):
+		if os.path.join(parser.FILENAME[0],'FIL_PAGE_INDEX') and os.path.join(parser.FILENAME[0],'FIL_PAGE_TYPE_BLOB'):
+			log.info('for fragmented page')
+			if 'indexid' not in opt:
+				print_error_and_exit('--set indexid=xx is must when fragementd page')
+			filename = os.path.join(parser.FILENAME[0],'FIL_PAGE_INDEX',opt['indexid'].zfill(16)) + ".page"
+			if not os.path.exists(filename):
+				print_error_and_exit(f"indexid={opt['indexid']} file {filename} not exists")
+			if parser.SDI_FILE is None:
+				print_error_and_exit(f"--sdi xx is must when fragementd page")
+			if not os.path.exists(parser.SDI_FILE):
+				print_error_and_exit(f"sdifile {parser.SDI_FILE} is not exists")
+			FRAGMENT_FILENAME = filename
+			FRAGMENT_PAGE = True
+			opt['leafno'] = 0
+			opt['rootno'] = 0
+			parser.FORCE = True
+			FRAGMENT_FILENAME_PRE = os.path.join(parser.FILENAME[0],'FIL_PAGE_TYPE_BLOB')
 	# init filename
-	filename_list = []
+	filename_list = [] if not FRAGMENT_PAGE else [FRAGMENT_FILENAME]
 	for x in parser.FILENAME:
 		for filename in glob.glob(x):
 			if os.path.isfile(filename):
@@ -586,7 +609,7 @@ if __name__ == '__main__':
 
 			# sql/data
 			if parser.SQL:
-				IBD2SQL_SINGLE(table,x,opt,filename_pre,log,parser)
+				IBD2SQL_SINGLE(table,x,opt,filename_pre,log,parser,FRAGMENT_FILENAME_PRE)
 				#if parser.PARALLEL is not None and parser.PARALLEL > 1: # multi process
 				#	IBD2SQL_MULTI(table,x,opt,filename_pre,log,parser)
 				#else: # single

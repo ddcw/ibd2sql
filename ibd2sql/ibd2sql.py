@@ -21,6 +21,17 @@ from multiprocessing import Process
 from multiprocessing import Value
 from multiprocessing import Lock
 
+class PAGE_READER_FRAGMENT(object):
+	def __init__(self,filename_pre):
+		self.filename_pre = filename_pre
+	def read(self,n):
+		filename = os.path.join(self.filename_pre,str(n).zfill(16)) + ".page"
+		data = b''
+		if os.path.exists(filename):
+			with open(filename,'rb') as f:
+				data = f.read(16384)
+		return data
+
 def GET_LEAF_PAGE_NO_FROM_SDI(pg,pageid):
 	while True:
 		data = pg.read(pageid)
@@ -160,7 +171,7 @@ def FORMAT_IBD_FILE(filename_list,sdi_file,keyring_file,log):
 
 	file_list = []
 	for filename in filename_list:
-		if filename[-3:] != 'ibd':
+		if not (filename.endswith('.ibd') or filename.endswith('.page')):
 			log.error(filename,'not endswith .ibd, skip it')
 			continue
 		ibdbase = IBDBASE(filename,log,kd)
@@ -314,7 +325,7 @@ def ROTAED_FILE(f,log,action='w'):
 	newf = open(newfilename,action)
 	return newf
 
-def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
+def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser,FRAGMENT_FILENAME_PRE):
 	writed_size = 0 # rotaed
 	writed_rows = 0
 	usehex = True if 'hex' in opt else False
@@ -355,7 +366,7 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 		leafno = FIND_LEAF_PAGE_FROM_ROOT(pg,rootno,table)
 	log.info(file_base['filename'],'LEAF PAGEID:',leafno)
 	leaf_page_data = pg.read(leafno)
-	PAGE_INDEX_ID = leaf_page_data[66:74]
+	PAGE_INDEX_ID = leaf_page_data[66:74] if 'indexid' not in opt else struct.pack('>Q',int(opt['indexid']))
 	if parser.PARALLEL <= 1: # single
 		# f write
 		if filename_pre != '':
@@ -371,7 +382,8 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 		# parser the rest data
 		pageid = leafno
 		idx = INDEX()
-		idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
+		pg2 = PAGE_READER_FRAGMENT(FRAGMENT_FILENAME_PRE)
+		idx.init_index(table=table,idxid=0,pg=pg if FRAGMENT_FILENAME_PRE == '' else pg2,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
 		if parser.SQL == 'data':
 			idx.get_sql = idx.get_data
 		if FORCE:
@@ -426,14 +438,14 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser):
 		lock = Lock()
 		worker = {}
 		for x in range(parser.PARALLEL):
-			worker[x] = Process(target=IBD2SQL_WORKER,args=(x,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated))
+			worker[x] = Process(target=IBD2SQL_WORKER,args=(x,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated,FRAGMENT_FILENAME_PRE))
 		for x in range(parser.PARALLEL):
 			worker[x].start()
 		for x in range(parser.PARALLEL):
 			worker[x].join()
 	return		
 
-def IBD2SQL_WORKER(p,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated):
+def IBD2SQL_WORKER(p,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,parser,file_base,PAGE_INDEX_ID,enclosed_by,fields_terminated,FRAGMENT_FILENAME_PRE):
 	infopre = f'PROCESS {p} (pid:{os.getpid()}):'
 	writed_size = 0
 	log.info(infopre,'START')
@@ -446,7 +458,8 @@ def IBD2SQL_WORKER(p,pageid,lock,log,filename_pre,HAVE_DATA,HAVE_DELETED,table,p
 		log.info(infopre,'output is stdout')
 	idx = INDEX()
 	pg = PAGE_READER(page_size=file_base['pagesize'],filename=file_base['filename'],encryption=file_base['encryption'],key=file_base['key'],iv=file_base['iv'])
-	idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
+	pg2 = PAGE_READER_FRAGMENT(FRAGMENT_FILENAME_PRE)
+	idx.init_index(table=table,idxid=0,pg=pg if FRAGMENT_FILENAME_PRE == '' else pg2,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
 	if parser.SQL == 'data':
 		idx.get_sql = idx.get_data
 	pages = os.path.getsize(file_base['filename'])//file_base['pagesize']
