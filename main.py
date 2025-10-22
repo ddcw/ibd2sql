@@ -261,11 +261,13 @@ def _argparse():
 	# disable-foreign-keys: ddl without foreign-keys
 	# host:			listen host for WEB, default '0.0.0.0'
 	# port:			listen port for WEB, default '8080'
+	# bad-pages:            skip/try/fast
+	# check-table-old:      check-table-old
 	parser.add_argument(
 		"--set",
 		dest="SET_OPTIONS", 
 		action='append',
-		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port\n example:--set='rootno=4;hex'"
+		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old\n example:--set='rootno=4;hex'"
 	)
 #	parser.add_argument(
 #		"--verbose",'-v'

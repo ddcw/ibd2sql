@@ -21,6 +21,9 @@ from multiprocessing import Process
 from multiprocessing import Value
 from multiprocessing import Lock
 
+from ibd2sql.utils.crc32c import CHECK_PAGE
+from ibd2sql.utils.check_table_old import CHECK_PAGE_OLD
+
 class PAGE_READER_FRAGMENT(object):
 	def __init__(self,filename_pre):
 		self.filename_pre = filename_pre
@@ -336,6 +339,8 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser,FRAGMENT_FILENAME
 	else:
 		enclosed_by = ';\n'
 	fields_terminated = opt['fields-terminated-by'] if 'fields-terminated-by' in opt else ','
+	BAD_PAGES_ACTION = '' if 'bad-pages' not in opt else opt['bad-pages']
+	CHECK_TABLE = CHECK_PAGE_OLD if 'check-table-old' in opt else CHECK_PAGE
 	LIMIT = parser.LIMIT if parser.LIMIT is not None else -1 # limit
 	OUTPUT_FILESIZE = parser.OUTPUT_FILESIZE
 	FORCE = parser.FORCE
@@ -382,24 +387,32 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser,FRAGMENT_FILENAME
 		# parser the rest data
 		pageid = leafno
 		idx = INDEX()
+		idx_bad = INDEX() # for bad-pages
 		pg2 = PAGE_READER_FRAGMENT(FRAGMENT_FILENAME_PRE)
 		idx.init_index(table=table,idxid=0,pg=pg if FRAGMENT_FILENAME_PRE == '' else pg2,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'])
+		idx_bad.init_index(table=table,idxid=0,pg=pg if FRAGMENT_FILENAME_PRE == '' else pg2,page_type='PK_LEAF',replace=parser.REPLACE,complete=parser.COMPLETE_INSERT,multi=parser.MULTI_VALUE,fields_terminated=fields_terminated,decode=not usehex,POST_ANTELOPE=file_base['fsp_flags']['POST_ANTELOPE'],BAD_PAGES=BAD_PAGES_ACTION)
 		if parser.SQL == 'data':
 			idx.get_sql = idx.get_data
+			idx_bad.get_sql = idx_bad.get_data
 		if FORCE:
 			pages = os.path.getsize(file_base['filename'])//file_base['pagesize']
 			pg.pageid = -1
 			for _ in range(pages):
 				log.info('READ PAGE ID:',pg.pageid)
 				data = pg.read(_)
-				if data[24:26] != b'E\xbf' or data[64:66] != b'\x00\x00' or PAGE_INDEX_ID != data[66:74]:
+				check_status = True if BAD_PAGES_ACTION == '' else CHECK_TABLE(data)
+				if check_status:
+					if data[24:26] != b'E\xbf' or data[64:66] != b'\x00\x00' or PAGE_INDEX_ID != data[66:74]:
+						continue
+				elif BAD_PAGES_ACTION == 'skip':
 					continue
 				idx.init_data(data)
+				idx_bad.init_data(data)
 				row = []
 				if HAVE_DATA:
-					row += idx.get_sql(False)
+					row += idx.get_sql(False) if check_status else idx_bad.get_sql(False)
 				if HAVE_DELETED:
-					row += idx.get_sql(True)
+					row += idx.get_sql(True) if check_status else idx_bad.get_sql(True)
 				for sql in row:
 					if LIMIT > 0:
 						f.write(sql+enclosed_by)

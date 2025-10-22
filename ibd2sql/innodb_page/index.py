@@ -108,7 +108,12 @@ class INDEX(PAGE):
 		if 'POST_ANTELOPE' in kwargs and kwargs['POST_ANTELOPE'] == 0 and self.table.mysql_version_id<80000:
 			self._read_extra_column = self._read_extra_column_with_768
 			self.off_page_flag = 17172
-		
+
+		if 'BAD_PAGES' in kwargs:
+			if kwargs['BAD_PAGES'] == 'fast':
+				self.get_all_rows = self.get_all_rows_fast
+			elif kwargs['BAD_PAGES'] == 'try':
+				self.get_all_rows = self.get_all_rows_try
 
 	def init_data(self,data):
 		self.data = data
@@ -166,6 +171,44 @@ class INDEX(PAGE):
 				all_row.append({'data':row,'pageid':pageid,'deleted':self.rec_header['REC_INFO_DELETED']})
 			# next page
 			self.offset = self._offset = self.rec_header['REC_NEXT']
+		return all_row
+
+	def get_all_rows_fast(self,deleted=False): # from page directory
+		all_row = []
+		pagedirs, = struct.unpack('>H',self.data[38:40])
+		pagedirs = min(1000,pagedirs)
+		pagedirs_offset = list(struct.unpack(f'>{pagedirs}H',self.data[-2*pagedirs-8:-8]))
+		_ = pagedirs_offset.reverse()
+		for offset in pagedirs_offset:
+			owned_count = 0
+			max_count = 16 # 防止死循环
+			while owned_count <= 1 and max_count > 0:
+				max_count -= 1
+				try:
+					self.offset = self._offset = offset
+					self._read_rec_header_new()
+					owned_count += 1 if self.rec_header['REC_N_OWNED'] > 0 else 0
+					if self.rec_header['REC_TYPE'] == 3:
+						break
+					if self.rec_header['REC_TYPE'] <= 1 and self.rec_header['REC_INFO_DELETED'] == deleted and owned_count <= 1:
+						row,pageid = self._read_row()
+						all_row.append({'data':row,'pageid':pageid,'deleted':self.rec_header['REC_INFO_DELETED']})
+					offset = self.rec_header['REC_NEXT']
+				except:
+					pass
+		return all_row
+
+	def get_all_rows_try(self,deleted=False):
+		all_row = []
+		for offset in range(99,len(self.data)-8):
+			try:
+				self.offset = self._offset = offset
+				self._read_rec_header_new()
+				row,pageid = self._read_row()
+				if self.rec_header['REC_TYPE'] <= 1 and self.rec_header['REC_INFO_DELETED'] == deleted:
+					all_row.append({'data':row,'pageid':pageid,'deleted':self.rec_header['REC_INFO_DELETED']})
+			except:
+				pass
 		return all_row
 
 	def _get_all_rows_compressed(self,deleted=False):
