@@ -302,3 +302,14 @@ python3 main.py /tmp/t20250908_test_4_pages.ibd --sdi /data/mysql_3308/mysqldata
 python3 main.py /PATH/pages-vda1/ --sdi /PATH/t20250912_2.frm --set indexid=22 --sql
 ```
 indexid=22 是对应 的/PATH/pages-vda1/FIL_PAGE_INDEX/0000000000000022.page 文件中的22(indexid)
+
+# 强制从坏块中提取数据
+对于坏块我们提供了3种选择.
+1. `--set bad-pages=fast` 根据page-directory信息尽可能的解析坏块中的数据, 数据可能会多,也可能会少
+2. `--set bad-pages=try` 1字节1字节的解析坏块中的数据, 会多出很多数据(表结构越简单,多的数据越多), 但不会差数据(有的都解析了)
+3. `--set bad-pages=skip` 跳过坏块中的数据.
+例子:
+```shell
+python3 main.py /tmp/sbtest2.ibd --sql --force --set bad-pages=fast
+```
+> 由于存在坏块,叶子节点间的指向就不准确了, 故要使用--force来强制遍历整个数据文件. 其它选项请自行组合. 对于bad-pages目前只在单进程中做了判断.

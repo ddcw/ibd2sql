@@ -12,6 +12,8 @@ When you only have IBD data file or a portion of IBD data files left, you can us
 
 ## download
 
+lastest version: ibd2sql-v2.1 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz)
+
 **Linux**
 
 ```shell

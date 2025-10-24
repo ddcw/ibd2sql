@@ -1,5 +1,10 @@
 # CHANGE LOG
 
+## 2.1 (2025.10.24)
+2.1 
+1. 修复了一些BUG
+2. 支持对碎片页的解析.
+3. 增加<尽可能的提取坏块中的数据>
 
 
 ## 2.0 (2025.08.30)
@@ -30,3 +35,5 @@ try it !
 | v1.10   | 2025.04.16 | fix some bugs & add super_fast_count.py                      |
 | v1.11   | 2025.06.13 | fix some bugs & make `--force` to view page one by one for skip BAD BLOCK |
 | v1.12   | 2025.08.30 | fix some bugs and improve performance by over 20%            |
+| v2.0    | 2025.08.30 | improved performance and support concurrency            |
+| v2.1    | 2025.10.24 | fix some bugs & add `--set bad-pages=fast/try/skip`            |

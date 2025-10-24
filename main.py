@@ -18,6 +18,15 @@ import glob
 import sys
 import os
 
+from ibd2sql.innodb_page.sdi import SDI
+from ibd2sql.innodb_page.page import PAGE_READER
+from ibd2sql.innodb_page.fsp import FSP
+from ibd2sql.innodb_page.fsp import GET_FSP_STATUS_FROM_FLAGS
+from ibd2sql.innodb_page.inode import INODE
+from ibd2sql.innodb_page.index import INDEX
+from ibd2sql.innodb_page.table import TABLE
+import struct
+
 def print_error_and_exit(msg,exit_code=1):
 	msg += "\n"
 	sys.stdout.write(msg)
@@ -58,13 +67,6 @@ def _argparse():
 		default=False,  
 		help="print ddl"
 	)
-#	parser.add_argument(
-#		"--disable-extra-pages", 
-#		action="store_true", 
-#		dest="DISABLE_EXTRA_PAGES",  # 禁用溢出页
-#		default=False,  
-#		help="disable extra pages(overflow page)"
-#	)
 	parser.add_argument(
 		"--sql", 
 		nargs='?',
@@ -74,21 +76,6 @@ def _argparse():
 		default=False, 
 		help="print data(default sql)"
 	)
-#	parser.add_argument(
-#		"--fields-terminated",
-#		dest="FIELD_TERMINATED", 
-#		help="fields terminated by"
-#	)
-#	parser.add_argument(
-#		"--fields-enclosed",
-#		dest="FIELD_ENCLOSED", 
-#		help="fields enclosed by"
-#	)
-#	parser.add_argument(
-#		"--lines-terminated",
-#		dest="LINES_TERMINATED", 
-#		help="lines terminated by"
-#	)
 	parser.add_argument(
 		"--delete", 
 		nargs='?',
@@ -143,16 +130,6 @@ def _argparse():
 		dest="SDI_FILE", 
 		help='read SDI from this file(ibd/sdi/frm)'
 	)
-#	parser.add_argument(
-#		"--filter-table", 
-#		dest="FILTER_TABLE", 
-#		help="filter table name if general tablespace or multi-ibd-file"
-#	)
-#	parser.add_argument(
-#		"--filter-schema", 
-#		dest="FILTER_SCHEMA", 
-#		help="filter schema name if general tablespace or multi-ibd-file"
-#	)
 	parser.add_argument(
 		"--limit", 
 		dest="LIMIT", 
@@ -166,20 +143,6 @@ def _argparse():
 		dest="KEYRING_FILE", 
 		help="keyring filename"
 	)
-#	parser.add_argument(
-#		"--page-start", 
-#		action="store", 
-#		type=int, 
-#		dest="PAGE_START", 
-#		help="INDEX PAGE START NO(with)"
-#	)
-#	parser.add_argument(
-#		"--page-count", 
-#		action="store", 
-#		type=int, 
-#		dest="PAGE_COUNT", 
-#		help="will be parse pages"
-#	)
 	parser.add_argument(
 		"--output",#"-o","-O",
 		nargs='?',
@@ -208,17 +171,11 @@ def _argparse():
 		help="print total rows of cluster index(super_fast)"
 	)
 #	parser.add_argument(
-#		"--check", 
+#		"--checksum", 
 #		action="store_true", 
-#		dest="CHECK", 
-#		help="check and print bad-block page-no if bad"
+#		dest="CHECKSUM", 
+#		help="like: CHECKSUM TABLE tablename"
 #	)
-	parser.add_argument(
-		"--checksum", 
-		action="store_true", 
-		dest="CHECKSUM", 
-		help="like: CHECKSUM TABLE tablename"
-	)
 	parser.add_argument(
 		"--web", 
 		action="store_true", 
@@ -269,92 +226,26 @@ def _argparse():
 		action='append',
 		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old\n example:--set='rootno=4;hex'"
 	)
-#	parser.add_argument(
-#		"--verbose",'-v'
-#		action='count',
-#		dest="LOG_LEVEL", 
-#		help="log level"
-#	)
-	
-
-#	parser.add_argument(
-#		"--raed-pages",
-#		type=int,
-#		dest="READ_PAGES",
-#		default=100,
-#		help="pages per read(only for --force), default 100 pages"
-#	)
-
 
 	#parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='?')
 	parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='*')
 
 	if parser.parse_args().VERSION:
-		print('ibd2sql v2.0')
+		print('ibd2sql v2.1-20251024')
 		sys.exit(0)
 
 	if parser.parse_args().HELP or parser.parse_args().FILENAME == []:
 		parser.print_help()
-		# USAGE
 		print('\nNew issue if have questions  : https://github.com/ddcw/ibd2sql/issues\n')
-		#print('Or send question to my email : yangguisen1996@gmail.com\n')
 		sys.exit(0)
 
 	parser = parser.parse_args()
-	# conflict check
 	
 	if parser.MULTI_VALUE and parser.REPLACE:
 		print_error_and_exit('conflict between --replace and --multi-value')
 
 	return parser
 
-
-from ibd2sql.innodb_page.sdi import SDI
-from ibd2sql.innodb_page.page import PAGE_READER
-from ibd2sql.innodb_page.fsp import FSP
-from ibd2sql.innodb_page.fsp import GET_FSP_STATUS_FROM_FLAGS
-from ibd2sql.innodb_page.inode import INODE
-from ibd2sql.innodb_page.index import INDEX
-from ibd2sql.innodb_page.table import TABLE
-import struct
-def t_ddl(filename,DDL_HISTORY,DISABLE_KEYS):
-	pg = PAGE_READER(page_size=16384,filename=filename)
-	#pg = PAGE_READER(page_size=8192,filename=filename)
-	aa = struct.unpack('>L',pg.read()[54:58])[0]
-	fsp_flags = GET_FSP_STATUS_FROM_FLAGS(aa)
-	pg = PAGE_READER(page_size=fsp_flags['physical_size'],filename=filename)
-	fsp = FSP(pg.read())
-	inode = INODE(pg)
-	sdino = inode.seg[0][0]['FSEG_FRAG_ARR'][0] if inode.seg[0][1]['FSEG_FRAG_ARR'][0] == 4294967295 else inode.seg[0][1]['FSEG_FRAG_ARR'][0]
-	#print(json.dumps(inode.seg))
-	#sys.exit(1)
-	bb = SDI(sdino,pg,'COMPRESSED' if fsp_flags['logical_size'] != fsp_flags['physical_size'] else '1')
-	#bb = SDI(121,aa,'1')
-	#print(bb.get_sdi())
-	sdi = json.dumps([bb.get_sdi()[1]] if fsp_flags['compressed'] else [bb.get_sdi()[0]])
-	#print(sdi)
-	#sys.exit(1)
-	table = TABLE(sdi)
-	if DDL_HISTORY:
-		print(table.get_ddl_history(DDL_HISTORY,DISABLE_KEYS))
-	else:
-		print(table.get_ddl(DDL_HISTORY,DISABLE_KEYS))
-	if DISABLE_KEYS:
-		print(table.get_ddl_key())
-	idx = INDEX()
-	idx.init_index(table=table,idxid=0,pg=pg,page_type='PK_LEAF')
-	#print(json.dumps(idx.read_all_rows()))
-	idx.init_data(pg.read(4))
-	print(idx.get_data())
-	#print(';\n'.join(idx.get_sql()),';')
-	sys.exit(1)
-	pageid = 7
-	while pageid < 4294967295:
-		data = pg.read(pageid)
-		pageid = struct.unpack('>L',data[12:16])[0]
-		idx.init_data(data)
-		print(';\n'.join(idx.get_sql()),';')
-	#print(idx.read_all_rows())
 
 class LOG(object):
 	def __init__(self,filename=None):
@@ -570,8 +461,6 @@ if __name__ == '__main__':
 				count_2 += (struct.unpack('>H',data[42:44])[0] & 32767) - 2
 			time_2 = time.time()
 			print(f"{file_base['filename']}\t{file_base['sdi']['dd_object']['name']}\tROWS:{count_1}\tROWS(with deleted):{count_2}\tTIME:{round((time_2-time_1),2)} seconds\tFILE SIZE:{round(os.path.getsize(file_base['filename'])/1024/1024,2)} MB")
-	elif parser.CHECKSUM: # only checksum
-		print('CHECKSUM TODO')
 	else: # ddl/sql
 		filename_pre = ''
 		if parser.OUTPUT_FILEDIR:
@@ -612,10 +501,6 @@ if __name__ == '__main__':
 			# sql/data
 			if parser.SQL:
 				IBD2SQL_SINGLE(table,x,opt,filename_pre,log,parser,FRAGMENT_FILENAME_PRE)
-				#if parser.PARALLEL is not None and parser.PARALLEL > 1: # multi process
-				#	IBD2SQL_MULTI(table,x,opt,filename_pre,log,parser)
-				#else: # single
-				#	IBD2SQL_SINGLE(table,x,opt,filename_pre,log,parser)
 
 			if parser.DDL == 'keys-after':
 				f.write(table.get_ddl_key()+"\n")

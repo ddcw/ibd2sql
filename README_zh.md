@@ -11,6 +11,7 @@
 # 下载和使用
 
 ## 下载
+当前最新版是: ibd2sql-v2.1 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz)
 
 **Linux**
 
