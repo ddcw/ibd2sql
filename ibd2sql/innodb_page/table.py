@@ -415,7 +415,7 @@ class TABLE(object):
 		else:
 			return {}
 
-		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB']:
+		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB','JSON']:
 			data['is_big'] = True
 
 		# issue 8  type is char and charset is latin1, will not use varsize
