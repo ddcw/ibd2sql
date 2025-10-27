@@ -341,5 +341,5 @@ def B2VECTOR(data):
 
 def B2JSON(data):
 	#return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init()))
-	return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init()))
+	return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init(),ensure_ascii=False))
 	#return repr(json.dumps(JSON2DICT(data).init()))
