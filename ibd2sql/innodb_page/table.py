@@ -31,6 +31,7 @@ PARTITION_TYPE = {
 	1:"HASH",
 	3:"KEY",
 	7:"RANGE",
+	9:"RANGE",
 	8:"LIST"
 }
 
