@@ -419,6 +419,16 @@ class TABLE(object):
 		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB','JSON']:
 			data['is_big'] = True
 
+		# old datetime
+		if self.mysql_version_id < 50604 and data['type_name'] in ['DATETIME','DATETIME2']:
+			data['size'] = 8
+			data['decode'] = B2DATETIME_OLD
+
+		# old time
+		if self.mysql_version_id < 50604 and data['type_name'] in ['TIME','TIME2']: # time
+			data['size'] = 3
+			data['decode'] = B2TIME_OLD
+
 		# issue 8  type is char and charset is latin1, will not use varsize
 		if data['type'] == 29 and data['character_set_maxlen'] == '1':
 			data['size'] = data['char_length']

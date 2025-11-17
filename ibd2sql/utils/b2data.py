@@ -144,6 +144,15 @@ def B2DATETIME(data,pad):
 		+ __hour(hour) + ':' + __minute(minute) + ':' + __second(second) 
 		+ fractional)
 			
+def B2DATETIME_OLD(data,pad=0):
+	dt, = struct.unpack('>Q',data)
+	if dt > 9223372036854775808:
+		dt -= 9223372036854775808
+	else:
+		dt = '00000000000000'
+	dt = str(dt)
+	return repr(dt[:4] + '-' + dt[4:6] + '-' + dt[6:8] + ' '
+		+ dt[8:10] + ':' + dt[10:12] + ':' + dt[12:14])
 
 def B2TIMESTAMP(data,pad):
 	t = time.localtime(B2UINT4(data[:4]))
@@ -159,6 +168,19 @@ def B2TIMESTAMP(data,pad):
 	return repr(__year(year)+'-'+__month(month)+'-'+__day(day)+' '
 		+ __hour(hour) + ':' + __minute(minute) + ':' + __second(second) 
 		+ fractional)
+
+def B2TIME_OLD(data,pad=0):
+	dt = B2INT3(data)
+	sign = ''
+	if dt < 0:
+		sign = '-'
+		dt = str(dt)[1:].zfill(6)
+	else:
+		dt = str(dt).zfill(6)
+	if len(dt) > 6:
+		sign += dt[:len(dt)-6]
+		dt = dt[len(dt)-6:]
+	return repr(sign+dt[:2]+':'+dt[2:4]+':'+dt[4:6])
 	
 
 # decode binary data
