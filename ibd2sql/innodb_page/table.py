@@ -395,7 +395,7 @@ class TABLE(object):
 			else: # utf8/utf8mb4
 				data['decode'] = B2STR_utf8
 		elif data['type_name'] in ['BIT']: # bit
-			data['size'] = (data['numeric_precision']+7)//8
+			data['size'] = (data['numeric_precision']+7)//8 if 'bytes' not in data else data['bytes']
 			data['decode'] = B2BIT
 		elif data['type_name'] in ['ENUM']: # enum
 			data['size'] = 2 if len(data['elements']) >= 256 else 1
