@@ -269,6 +269,7 @@ class TABLE(object):
 			data['decode'] = B2UINT8
 		elif data['type_name'] in ['DECIMAL','NEWDECIMAL']:
 			p1 = map_decimal(data['numeric_precision']-data['numeric_scale'])
+			_ = p1.reverse()
 			p2 = map_decimal(data['numeric_scale'])
 			data['size'] = sum([x[0] for x in p1]) + sum([x[0] for x in p2])
 			data['args'] = [p1,p2]
