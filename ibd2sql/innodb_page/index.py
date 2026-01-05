@@ -166,7 +166,7 @@ class INDEX(PAGE):
 
 		for _ in range(row_count):
 			self._read_rec_header_new()
-			if self.rec_header['REC_TYPE'] <= 1:
+			if self.rec_header['REC_TYPE'] <= 1 or deleted:
 				row,pageid = self._read_row()
 				all_row.append({'data':row,'pageid':pageid,'deleted':self.rec_header['REC_INFO_DELETED']})
 			# next page
