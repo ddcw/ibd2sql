@@ -207,6 +207,15 @@ def _argparse():
 		help="log file"
 	)
 
+	parser.add_argument(
+		"--scan-device",
+		nargs='?',
+		const=True,
+		dest="SCAN_DROP_TABLE",
+		help="scan device/file for get drop/truncate table index page/sql, eg:/dev/sdb1"
+	)
+
+
 
 	# fields-terminated-by/fields-enclosed-by/lines-terminated-by for --sql=data
 	# table/schema: 	filter table/schema
@@ -220,21 +229,29 @@ def _argparse():
 	# port:			listen port for WEB, default '8080'
 	# bad-pages:            skip/try/fast
 	# check-table-old:      check-table-old
+	# chunk-size            the size of space requested by each process each time
+	# buffer-size           the size of each read file
+	# page-size             index page size
+	# block-size            file system block size
+	# offset-start          device/file start offset
+	# offset-stop           device/file stop offset
+	# with-sdi              scan device to obtain additional SDI
+	# with-frm              scan device to obtain additional FRM
 	parser.add_argument(
 		"--set",
 		dest="SET_OPTIONS", 
 		action='append',
-		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old\n example:--set='rootno=4;hex'"
+		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old,chunk-size,buffer-size,page-size,block-size,offset-start,offset-stop,with-sdi,with-frm\n example:--set='rootno=4;hex'"
 	)
 
 	#parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='?')
 	parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='*')
 
 	if parser.parse_args().VERSION:
-		print('ibd2sql v2.1-20251024')
+		print('ibd2sql v2.2-20260108')
 		sys.exit(0)
 
-	if parser.parse_args().HELP or parser.parse_args().FILENAME == []:
+	if parser.parse_args().HELP or (parser.parse_args().FILENAME == [] and not parser.parse_args().SCAN_DROP_TABLE is not None):
 		parser.print_help()
 		print('\nNew issue if have questions  : https://github.com/ddcw/ibd2sql/issues\n')
 		sys.exit(0)
@@ -299,6 +316,10 @@ if __name__ == '__main__':
 	log = LOG(parser.LOG_FILE)
 	log.info('SET:',opt)
 	log.info('INIT FILENAME')
+
+	if parser.SCAN_DROP_TABLE is not None:
+		from ibd2sql.scan_drop_table import SCAN_TABLE
+		sys.exit(SCAN_TABLE(log,parser,opt))
 
 	# for fragmented page
 	FRAGMENT_PAGE = False

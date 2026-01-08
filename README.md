@@ -6,13 +6,15 @@
 
 When you only have IBD data file or a portion of IBD data files left, you can use `ibd2sql` to parse the data within it.
 
+Or when you drop/truncate some table, you can also use `ibd2sql` to parse the remaining data on the disk
+
 
 
 # DOWNLOAD & USAGE
 
 ## download
 
-lastest version: ibd2sql-v2.1 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz)
+lastest version: ibd2sql-v2.2 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz)
 
 **Linux**
 

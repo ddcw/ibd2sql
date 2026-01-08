@@ -313,3 +313,56 @@ indexid=22 是对应 的/PATH/pages-vda1/FIL_PAGE_INDEX/0000000000000022.page �
 python3 main.py /tmp/sbtest2.ibd --sql --force --set bad-pages=fast
 ```
 > 由于存在坏块,叶子节点间的指向就不准确了, 故要使用--force来强制遍历整个数据文件. 其它选项请自行组合. 对于bad-pages目前只在单进程中做了判断.
+
+
+# 恢复被drop的表
+主要使用`--scan DEVNAME`扫描磁盘来恢复被drop的数据. 可以先获取元数据信息,再扫盘; 也可以直接获取元数据信息并扫盘.
+> 5.7的元数据信息是在ibdata1里面的, 8.0是在mysql.ibd里面的.
+
+例子: 查看/data2/mysql.ibd中被drop的表,并扫描磁盘/dev/vdc,并输出为SQL语句
+```shell
+python3 main.py /data2/mysql.ibd --scan /dev/vdc --sql
+```
+
+如果有多个表被删除, 可以加上`--set table=TBLNAME` 来获取指定的表的信息
+```shell
+python3 main.py /data2/mysql.ibd --scan /dev/vdc --sql --set table=TBLNAME
+```
+
+当然有时候,可能需要先输出为page形式,然后再次解析
+```shell
+# 扫描目录获取page
+python3 main.py /data/mysql_5744/mysqldata/ibdata1 --scan /dev/vdb
+# 直接指定扫描上面获取到的目录
+python3 main.py /data/mysql_5744/mysqldata/ibdata1 --scan ibd2sql_auto_dir_20260108_142543 --sql
+```
+
+还有的时候,我们可能需要全部index page都扫描出来
+```shell
+python3 main.py --scan /dev/vdb --set indexid=all
+```
+
+并发也是支持的
+```shell
+python3 main.py --scan /dev/vdb --set indexid=all --parallel 4
+```
+
+更多组合自己去试吧 -_-
+
+# 恢复被truncate的表
+mysql 5.7中truncate表Indexid是不会变的, 我们只需要获取到indexid,然后扫描磁盘的时候指定indexid即可.
+```shell
+# 扫描ibdata1获取t2表的tableid (第2列)
+python3 main.py /data/mysql_5744/mysqldata/ibdata1 --set table=sys_tables --sql | grep t2
+
+# 扫描ibdata1获取t2表主键的indexid (第2列)
+python3 main.py /data/mysql_5744/mysqldata/ibdata1 --set table=sys_indexes --sql | grep 55 #这个55是上面看到表的第2列,tableid
+
+# 根据indexid扫描磁盘获取相关的page
+python3 main.py --scan /dev/vdb --set indexid=56 # 这个56就是上面获取到的indexid
+
+# 然后指定sdi等元数据信息解析相关的表即可
+python3 main.py /tmp/ibd2sql_auto_dir_20260108_145604/index/0_0000000034_0000000000000056.page --sdi /data/mysql_5744/mysqldata/db1/t20260108_02.frm --set leafno=0 --set rootno=0 --force --sql
+```
+
+对于mysql 8.0就麻烦点, 因为是使用的update更新的系统表,indexid之类的信息被更新了, 找不到之前的信息了.(redo应该有,后面可以尝试下). 但是我们可以把所有的索引页都扫描出来, 然后一个个试(建议先把系统表记录的表的indexid都排除掉,这样少很多, 基本上就只剩下几个了)

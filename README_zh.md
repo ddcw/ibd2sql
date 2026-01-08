@@ -6,12 +6,14 @@
 
 当你只剩下IBD文件或者剩下半截数据文件的时候, 你可以使用`ibd2sql`去恢复其中的数据.
 
+或者, 当你drop/truncate一张表之后,你可以使用`ibd2sql`扫描磁盘去恢复剩余的数据.
+
 
 
 # 下载和使用
 
 ## 下载
-当前最新版是: ibd2sql-v2.1 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.1.tar.gz)
+当前最新版是: ibd2sql-v2.2 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz)
 
 **Linux**
 

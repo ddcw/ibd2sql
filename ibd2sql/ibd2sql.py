@@ -172,6 +172,20 @@ def FORMAT_IBD_FILE(filename_list,sdi_file,keyring_file,log):
 			ibdbase = IBDBASE(sdi_file,log,kd)
 			global_sdi_info = ibdbase.sdi[0]
 
+	if len(filename_list) == 1 and os.path.basename(filename_list[0]) == 'ibdata1':
+		from ibd2sql.dictionary.tables import GET_SYS_TABLES_SDI
+		SYS_TABLES_SDI = GET_SYS_TABLES_SDI()
+		return [ {
+			'filename':filename_list[0],
+			'sdi':SYS_TABLES_SDI[x][0],
+			'encryption':False,
+			'key':'',
+			'iv':'',
+			'pagesize':16384,
+			'partition_name':'',
+			'fsp_flags':{'POST_ANTELOPE': 1, 'ZIP_SSIZE': 0, 'ATOMIC_BLOBS': 1, 'PAGE_SSIZE': 0, 'DATA_DIR': 0, 'SHARED': 1, 'TEMPORARY': 0, 'ENCRYPTION': 0, 'SDI': 0, 'logical_size': 16384, 'physical_size': 16384, 'compressed': False}
+		} for x in SYS_TABLES_SDI ]
+
 	file_list = []
 	for filename in filename_list:
 		if not (filename.endswith('.ibd') or filename.endswith('.page')):
@@ -344,6 +358,8 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser,FRAGMENT_FILENAME
 	LIMIT = parser.LIMIT if parser.LIMIT is not None else -1 # limit
 	OUTPUT_FILESIZE = parser.OUTPUT_FILESIZE
 	FORCE = parser.FORCE
+	if os.path.basename(file_base['filename']) == 'ibdata1':
+		FORCE = True
 	HAVE_DATA = True
 	HAVE_DELETED = False
 	if parser.DELETED == 'only' or parser.DELETED == True:
@@ -372,6 +388,9 @@ def IBD2SQL_SINGLE(table,file_base,opt,filename_pre,log,parser,FRAGMENT_FILENAME
 	log.info(file_base['filename'],'LEAF PAGEID:',leafno)
 	leaf_page_data = pg.read(leafno)
 	PAGE_INDEX_ID = leaf_page_data[66:74] if 'indexid' not in opt else struct.pack('>Q',int(opt['indexid']))
+	if os.path.basename(file_base['filename']) == 'ibdata1':
+		from ibd2sql.dictionary.tables import GET_INDEXID_BY_TBLNAME
+		PAGE_INDEX_ID = struct.pack('>Q',GET_INDEXID_BY_TBLNAME(file_base['sdi']['dd_object']['name']))
 	if parser.PARALLEL <= 1: # single
 		# f write
 		if filename_pre != '':

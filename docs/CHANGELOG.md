@@ -37,3 +37,4 @@ try it !
 | v1.12   | 2025.08.30 | fix some bugs and improve performance by over 20%            |
 | v2.0    | 2025.08.30 | improved performance and support concurrency            |
 | v2.1    | 2025.10.24 | fix some bugs & add `--set bad-pages=fast/try/skip`            |
+| v2.2    | 2026.01.08 | fix some bugs & support parser ibdata1  & add scan disk to recover dropped/truncated table          |
