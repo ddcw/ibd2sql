@@ -217,7 +217,16 @@ class INDEX(PAGE):
 		n_recs = struct.unpack('>H',self.data[54:56])[0]
 		d = zlib.decompressobj()
 		c = d.decompress(self.data[94:])
-		toffset = c.find(b'\x01') + 1
+		#toffset = c.find(b'\x01') + 1
+		# issue 83: var & not null & row_format=compressed
+		sflag = 1
+		for colid in self.table.column:
+			col = self.table.column[colid]
+			sflag += 1 if (not col['is_big']) and (not col['is_nullable']) and col['is_var'] else 0
+		toffset = 0
+		for i in range(sflag):
+			toffset += c[toffset:].find(b'\x01') + 1
+				
 		data = self.data[:94]
 		data += struct.pack('>BBB',0x01,0x00,0x02)
 		data += self.data[-2:]
