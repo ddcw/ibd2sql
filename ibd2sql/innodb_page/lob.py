@@ -1,4 +1,19 @@
 import struct
+import zlib
+
+# FIL_PAGE_TYPE_ZBLOB
+def FIRST_ZBLOB(pg,pageno):
+	rdata = b''
+	d = zlib.decompressobj()
+	while True:
+		data = pg.read(pageno)
+		pre,nex = struct.unpack('>LL',data[8:16])
+		rdata += d.decompress(data[38:])
+		if nex == 4294967295:
+			break
+		else:
+			pageno = nex
+	return rdata
 
 def FIRST_BLOB(pg,pageno):
 	"""

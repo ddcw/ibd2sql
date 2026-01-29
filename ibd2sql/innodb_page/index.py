@@ -1,5 +1,6 @@
 from ibd2sql.innodb_page.page import PAGE
 from ibd2sql.innodb_page.lob import FIRST_BLOB
+from ibd2sql.innodb_page.lob import FIRST_ZBLOB
 from ibd2sql.utils.b2data import B2UINT6
 from ibd2sql.utils.b2data import B2UINT7
 import struct
@@ -115,6 +116,10 @@ class INDEX(PAGE):
 			elif kwargs['BAD_PAGES'] == 'try':
 				self.get_all_rows = self.get_all_rows_try
 
+		#issue 83 row_format=compressed & zblob
+		self.is_compress_page = False
+		self.zblob_offset = 0
+
 	def init_data(self,data):
 		self.data = data
 		self.offset = self.foffset
@@ -226,6 +231,7 @@ class INDEX(PAGE):
 		toffset = 0
 		for i in range(sflag):
 			toffset += c[toffset:].find(b'\x01') + 1
+		self.is_compress_page = True
 				
 		data = self.data[:94]
 		data += struct.pack('>BBB',0x01,0x00,0x02)
@@ -258,6 +264,7 @@ class INDEX(PAGE):
 			self.offset_start = self.offset
 			offset,is_deleted = page_dir[x]
 			self.offset = offset - 5*(x+1) - 13*x
+			self.offset -= self.zblob_offset
 			if self.offset > compressed_offset:
 				#print(x,have_compressed_offset,have_compressed,self.offset_start,page_dir[x],data[1037:1037+14])
 				have_compressed_offset += 1 if x <= 62 else 2
@@ -425,6 +432,7 @@ class INDEX(PAGE):
 			if null:
 				data = 'null'
 			elif vsize == self.off_page_flag:
+				self.zblob_offset += 20 if self.is_compress_page else 0
 				if self.disable_extra_pages:
 					data = 'null'
 					null = True
@@ -505,7 +513,7 @@ class INDEX(PAGE):
 		SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self._read_extra_20())
 		data = b''
 		if self.table.mysql_version_id > 50744:
-			data = FIRST_BLOB(self.pg,PAGENO)
+			data = FIRST_BLOB(self.pg,PAGENO) if not self.is_compress_page else FIRST_ZBLOB(self.pg,PAGENO)
 		else:
 			while True:
 				_ndata = self.pg.read(PAGENO)
