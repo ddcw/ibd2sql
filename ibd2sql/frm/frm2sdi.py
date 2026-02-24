@@ -233,7 +233,7 @@ class MYSQLFRM(object):
 
 		# 读取索引的注释
 		for i in range(keys):
-			INDEX[i]['comment'] = self.read(self.read_int(2)).decode()
+			INDEX[i]['comment'] = self.read(self.read_int(2)).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.read_int(2)).decode()
 
 		self.KEYS = {
 			'keys':keys,
@@ -265,7 +265,7 @@ class MYSQLFRM(object):
 		self.data.seek(self.record_offset+46,0)
 		comment_size = self.read_int(1)
 		if comment_size < 255:
-			self.COMMENT = self.read(comment_size).decode()
+			self.COMMENT = self.read(comment_size).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(comment_size).decode()
 		else:
 			self.data.seek(self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']+16,0)
 			comment_size = self.read_int(2)
@@ -338,7 +338,7 @@ class MYSQLFRM(object):
 			#print(self.COLUMNS['field'][i]['metadata'])
 		_filedname = self.read(NAMESIZE+2)
 		for i in range(self.COLUMNS['fields']):
-			self.COLUMNS['field'][i]['comment'] = self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode()
+			self.COLUMNS['field'][i]['comment'] = self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode()
 		
 		for i in range(self.COLUMNS['fields']):
 			if self.COLUMNS['field'][i]['metadata']['field_type'] in [247,248]:
