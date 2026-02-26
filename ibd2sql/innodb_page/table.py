@@ -726,7 +726,7 @@ class TABLE(object):
 		prepk = []
 		index = self.index[0]
 		for x in index['elements']:
-			if x['length'] < 4294967295 and not x['hidden']:
+			if x['length'] < 4294967295:# and not x['hidden']: #issue 87: 8.0.12之前没得hidden属性
 				pk.append(x['column_opx'])
 			if x['is_pre']:
 				prepk.append(x['column_opx'])
