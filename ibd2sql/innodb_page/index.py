@@ -175,7 +175,7 @@ class INDEX(PAGE):
 				row,pageid = self._read_row()
 				all_row.append({'data':row,'pageid':pageid,'deleted':self.rec_header['REC_INFO_DELETED']})
 			# next page
-			self.offset = self._offset = self.rec_header['REC_NEXT']
+			self.offset = self._offset = self.rec_header['REC_NEXT']%65536 # when innodb_page_size=64K
 		return all_row
 
 	def get_all_rows_fast(self,deleted=False): # from page directory
