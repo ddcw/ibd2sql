@@ -257,7 +257,7 @@ def remove_quotes(s):
 		return s
 
 # 从mysql.ibd中读取被标记为delete的表
-def READ_META_FROM_MYSQLIBD(log,filename,parser):
+def READ_META_FROM_MYSQLIBD(log,filename,parser,opt):
 	ibdbase = IBDBASE(filename,log,{})
 	file_base = {
 		'filename':filename,
@@ -320,7 +320,13 @@ def READ_META_FROM_MYSQLIBD(log,filename,parser):
 			all_data = []
 			if name == 'schemata':
 				all_data = idx.get_all_rows(False)
-			all_data += idx.get_all_rows(True) # only deleted data
+			if 'deleted' in opt:
+				if opt['deleted'] in ['except','with']:
+					all_data += idx.get_all_rows(False)
+				elif opt['deleted'] in ['only','with']:
+					all_data += idx.get_all_rows(True)
+			else:
+				all_data += idx.get_all_rows(True) # only deleted data
 			for x in all_data:
 				if name in SYS_TABLES_UPDATE:
 					if x['data'][SYS_TABLES_UPDATE[name]]['data'] == 'null':
@@ -348,7 +354,10 @@ def READ_META_FROM_MYSQLIBD(log,filename,parser):
 			log.warning(f'SKIP TABLE {table_name}, no column')
 			continue
 		table = DD['tables'][table_id][0]
-		schema_name = DD['schemata'][table['schema_id']][0]['name']
+		try:
+			schema_name = DD['schemata'][table['schema_id']][0]['name']
+		except:
+			continue
 		#columns = DD['columns'][table_id]
 		columns = []
 		for col in DD['columns'][table_id]:
@@ -405,7 +414,10 @@ def READ_META_FROM_MYSQLIBD(log,filename,parser):
 
 		# 对columns排个序
 		_tcolumns = [ [_col['ordinal_position'],_col] for _col in columns ]
-		_s = _tcolumns.sort()
+		try:
+			_s = _tcolumns.sort()
+		except:
+			continue
 		columns = [ _col[1] for _col in _tcolumns ]
 			
 		col_max_ordinal_position = max([ k['ordinal_position'] for k in columns ])
@@ -446,7 +458,10 @@ def READ_META_FROM_MYSQLIBD(log,filename,parser):
 			elements = [ _e[1] for _e in _elements ]
 
 			t['elements'] = elements
-			t['tablespace_ref'] = DD['tablespaces'][idx['tablespace_id']][0]['name']
+			try:
+				t['tablespace_ref'] = DD['tablespaces'][idx['tablespace_id']][0]['name']
+			except:
+				continue
 			t['type'] = INDEXTYPE2INT[t['type']]
 			t['algorithm'] = INDEXALGORITHM2INT[t['algorithm']]
 			indexes.append(t)
@@ -580,7 +595,13 @@ def READ_META_FROM_IBDATA1(log,filename,parser,opt):
 			idx.init_data(data)
 			all_data = []
 			#all_data += idx.get_all_rows(True) # only deleted data
-			all_data += idx.get_all_rows(True) # only deleted data
+			if 'deleted' in opt:
+				if opt['deleted'] in ['with','except']:
+					all_data += idx.get_all_rows(False)
+				elif opt['deleted'] in ['only','except']:
+					all_data += idx.get_all_rows(True)
+			else:
+				all_data += idx.get_all_rows(True) # only deleted data
 			for x in all_data:
 				k = x['data'][sys_index_id[name][1]]['data']
 				tt = {}
@@ -877,7 +898,7 @@ def SCAN_TABLE(log,parser,opt):
 		# get metadata
 		log.info('will read metadata from ',filename)
 		if bsfilename == 'mysql.ibd':
-			dd = READ_META_FROM_MYSQLIBD(log,filename,parser)
+			dd = READ_META_FROM_MYSQLIBD(log,filename,parser,opt)
 		elif bsfilename == 'ibdata1':
 			dd = READ_META_FROM_IBDATA1(log,filename,parser,opt)
 		else:

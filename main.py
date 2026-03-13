@@ -237,18 +237,19 @@ def _argparse():
 	# offset-stop           device/file stop offset
 	# with-sdi              scan device to obtain additional SDI
 	# with-frm              scan device to obtain additional FRM
+	# deleted               for --scan ibdata1/mysql.ibd with deleted?: only(default), except, with
 	parser.add_argument(
 		"--set",
 		dest="SET_OPTIONS", 
 		action='append',
-		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old,chunk-size,buffer-size,page-size,block-size,offset-start,offset-stop,with-sdi,with-frm\n example:--set='rootno=4;hex'"
+		help="set some options:fields-terminated-by,fields-enclosed-by,lines-terminated-by,schema(filter),table,disable-extra-pages,leafno,rootno,trim_trailing_space(only for char),hex,foreign-keys-after,disable-foreign-keys,host,port,bad-pages,check-table-old,chunk-size,buffer-size,page-size,block-size,offset-start,offset-stop,with-sdi,with-frm,deleted\n example:--set='rootno=4;hex'"
 	)
 
 	#parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='?')
 	parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='*')
 
 	if parser.parse_args().VERSION:
-		print('ibd2sql v2.2-20260108')
+		print('ibd2sql v2.3-20260313-pre')
 		sys.exit(0)
 
 	if parser.parse_args().HELP or (parser.parse_args().FILENAME == [] and not parser.parse_args().SCAN_DROP_TABLE is not None):
