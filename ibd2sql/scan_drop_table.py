@@ -78,6 +78,9 @@ def GET_SIZE_FROM_DEV(filename):
 	status = True
 	if stat.S_ISREG(f_stat.st_mode): # file
 		file_size = f_stat.st_size
+	elif stat.S_ISBLK(f_stat.st_mode) and filename.startswith('\\\\.\\'): # for windows
+		import shutil
+		file_size = shutil.disk_usage(filename[4:]).total
 	elif stat.S_ISBLK(f_stat.st_mode):
 		real_dev = ''
 		try:
