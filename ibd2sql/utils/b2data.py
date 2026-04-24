@@ -330,7 +330,7 @@ def B2DECIMAL(data,p1,p2):
 	offset = 0
 	p1_data,offset = _READ_DECIMAL(data,p1,offset)
 	p2_data,offset = _READ_DECIMAL(data,p2,offset)
-	p1_data = str(int(p1_data))
+	p1_data = str(0 if p1_data == '' else int(p1_data))
 	return f"{'-' if signed else ''}{p1_data}.{p2_data}"
 		
 	p1_data = "".join([ toint(bdata).zfill(zfill) for zfill,bdata in data[0] ])
