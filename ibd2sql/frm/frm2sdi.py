@@ -515,6 +515,7 @@ class MYSQLFRM(object):
 				column_type_utf8 = 'varbinary'
 			if col['metadata']['field_type'] == 254 and field_type == 16 and col['metadata']['pack_flag']&1 > 0: # 是否是binary
 				column_type_utf8 = 'binary'
+				field_type = 29
 			if field_type == 21 and not numeric_scale_null: #decimal
 				column_type_utf8 += f"({numeric_precision},{numeric_scale})" 
 			elif field_type in [22,23]:
