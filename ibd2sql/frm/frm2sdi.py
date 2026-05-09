@@ -337,8 +337,6 @@ class MYSQLFRM(object):
 				self.pack_record = 1
 			#print(self.COLUMNS['field'][i]['metadata'])
 		_filedname = self.read(NAMESIZE+2)
-		for i in range(self.COLUMNS['fields']):
-			self.COLUMNS['field'][i]['comment'] = self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode()
 		
 		for i in range(self.COLUMNS['fields']):
 			if self.COLUMNS['field'][i]['metadata']['field_type'] in [247,248]:
@@ -356,6 +354,9 @@ class MYSQLFRM(object):
 					else:
 						tdata += edata
 				self.COLUMNS['field'][i]['elements'] = element
+		# 先读取enum/set的元数,再读取默认值: issue:93
+		for i in range(self.COLUMNS['fields']):
+			self.COLUMNS['field'][i]['comment'] = self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode()
 						
 		# 将默认值拆分给每个字段 (字段是否有默认值)
 		# HA_OPTION_PACK_RECORD = 1
