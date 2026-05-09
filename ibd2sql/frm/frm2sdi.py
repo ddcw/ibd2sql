@@ -522,7 +522,7 @@ class MYSQLFRM(object):
 				column_type_utf8 += f"({','.join([ repr(item) for item in col['elements'] ])})"
 			elif field_type in [18,19,20] and datetime_precision_null != 1:
 				column_type_utf8 += f"({datetime_precision})"
-			elif field_type in [16]: # varchar之类的
+			elif field_type in [16,29]: # varchar之类的
 				column_type_utf8 += f"({char_length//int(COLLATIONS_DICT[str(collation_id)]['MAXLEN'])})"
 			elif field_type in [17]: # bit
 				column_type_utf8 += f"({char_length})"

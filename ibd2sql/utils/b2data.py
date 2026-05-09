@@ -194,7 +194,7 @@ def B2STR_big5(data):
 	return repr(data.decode('big5'))
 
 def B2STR_binary(data):
-	return '0x'+data.hex()
+	return '0x'+data.hex() if data !=b'' else repr('')
 
 def B2STR_cp1250(data):
 	return repr(data.decode('cp1250'))
