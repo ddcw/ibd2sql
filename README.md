@@ -14,7 +14,7 @@ Or when you drop/truncate some table, you can also use `ibd2sql` to parse the re
 
 ## download
 
-lastest version: ibd2sql-v2.2 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.2.tar.gz)
+lastest version: ibd2sql-v2.3 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz)
 
 **Linux**
 

@@ -1,5 +1,25 @@
 # CHANGE LOG
 
+## 2.3(2026.05.26)
+2.3
+1. 修复BUG: var & not null & row_format=compressed
+2. 支持zblob
+3. 移除了MERGE_THRESHOLD(为了兼容5.6 ibdata1)
+4. 修复BUG: 当innodb_page_size=65K时,rec_next溢出问题
+5. 支持win环境恢复drop的表 (--scan \\.\E:)
+6. 支持从系统表提取非deleted的表信息(--set deleted=except)
+7. 修复BUG: decimal整数部分为空
+8. 修复BUG: frm中:默认值在enum/set之后;binary类型为29;binary为空时返回''而不是0x
+
+
+
+
+## 2.2(2026.01.8)
+2.2
+1. 修复已知BUG
+2. 支持ibdata1文件解析
+3. 支持drop/truncate表的恢复
+
 ## 2.1 (2025.10.24)
 2.1 
 1. 修复了一些BUG
@@ -38,3 +58,4 @@ try it !
 | v2.0    | 2025.08.30 | improved performance and support concurrency            |
 | v2.1    | 2025.10.24 | fix some bugs & add `--set bad-pages=fast/try/skip`            |
 | v2.2    | 2026.01.08 | fix some bugs & support parser ibdata1  & add scan disk to recover dropped/truncated table          |
+| v2.3    | 2026.05.26 | fix some bugs & support recover dropped/truncated table for win         |
