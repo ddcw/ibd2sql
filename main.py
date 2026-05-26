@@ -249,7 +249,7 @@ def _argparse():
 	parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='*')
 
 	if parser.parse_args().VERSION:
-		print('ibd2sql v2.3-20260313-pre')
+		print('ibd2sql v2.3-20260526')
 		sys.exit(0)
 
 	if parser.parse_args().HELP or (parser.parse_args().FILENAME == [] and not parser.parse_args().SCAN_DROP_TABLE is not None):
