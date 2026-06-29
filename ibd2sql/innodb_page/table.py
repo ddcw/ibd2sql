@@ -577,7 +577,7 @@ class TABLE(object):
 				continue
 			ddl += e[:-1] + ") "
 			if idx['comment'] != "":
-				ddl += f"{idx['comment']} "
+				ddl += f"COMMENT {repr(idx['comment'])} "
 			if not idx['is_visible']:
 				ddl += f"/*!80000 INVISIBLE */ "
 			ddl = ddl[:-1]
