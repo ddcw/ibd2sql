@@ -339,6 +339,8 @@ def B2DECIMAL(data,p1,p2):
 
 # ENUM
 def B2ENUM(data,elements):
+	if data == b'\x00' or data == b'\x00\x00': # when 'enum not null' and sql_mode='', insert into tbl values('')
+		return repr('')
 	return repr(elements[int.from_bytes(data,'big',signed=False)])
 
 # SET
