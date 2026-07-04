@@ -48,6 +48,8 @@ def element_b64_format(data):
 	dd = {}
 	for x in data:
 		dd[x['index']] = base64.b64decode(x['name']).decode()
+	if 0 not in dd: # always true (set set/enum default)
+		dd[0] = ''
 	return dd
 	
 
