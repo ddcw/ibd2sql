@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# writen by ddcw  @https://github.com/ddcw/ibd2sql
+# written by ddcw  @https://github.com/ddcw/ibd2sql
 # ibd2sql: parse ibd file to sql
 
 from ibd2sql.ibd2sql import FORMAT_IBD_FILE
