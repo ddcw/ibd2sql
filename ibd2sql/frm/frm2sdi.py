@@ -594,6 +594,18 @@ class MYSQLFRM(object):
 				'collation_id':collation_id,
 				'is_explicit_collation':False, # 管它手动不手动的
 			})
+		# 当没有主键的时候,第一个非空唯一索引就是cluster index
+		FIRST_UK_NOT_NULL = -1
+		for i in range(len(self.KEYS['key'])):
+			idx = self.KEYS['key'][i]
+			if len(idx['key_parts']) == sum([ 0 if COLUMN[ekey['fieldnr']-1]['is_nullable'] else 1 for eindex,ekey in enumerate(idx['key_parts'],start=1) ]):
+				FIRST_UK_NOT_NULL = i
+				break
+		if not self.HAVE_PRIMARY and FIRST_UK_NOT_NULL >= 0:
+			self.HAVE_PRIMARY = True
+		else:
+			FIRST_UK_NOT_NULL = -1
+
 		current_ordinal_position = len(COLUMN)
 		# 补充隐藏字段 rowid,rollptr & trxid
 		syscol_opt = {
@@ -702,6 +714,9 @@ class MYSQLFRM(object):
 					} for eindex,ekey in enumerate(idx['key_parts'],start=1) ]
 				#'o':idx
 			})
+			# 当NOPK的时候,显示的将第一个非空UK放到开头(以防老版本的mysql没这么干)
+			if FIRST_UK_NOT_NULL == i:
+				INDEX = [INDEX[-1]] + INDEX[1:-1]
 
 		if self.HAVE_PRIMARY:
 			PKC = len(INDEX[0]['elements'])
