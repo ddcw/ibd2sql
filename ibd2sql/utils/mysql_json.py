@@ -165,22 +165,23 @@ class jsonob(object):
 	def read_var(self,offset):
 		"""
 		读mysql的varchar的 记录长度的大小, 范围字节数量和大小
-		如果第一bit是1 就表示要使用2字节表示:
+		如果第一bit是1 就表示要使用2字节表示,如果第二字节的第1bit为1,则使用3字节,依次类推:
 			后面1字节表示 使用有多少个128字节, 然后加上前面1字节(除了第一bit)的数据(0-127) 就是最终数据
 -----------------------------------------------------
 | 1 bit flag | 7 bit data | if flag, 8 bit data*128 |
 -----------------------------------------------------
 		"""
-		_s = int.from_bytes(self.bdata[offset:offset+1],'little')
-		size = 1
-		if _s & (1<<7):
-			size += 1
-			_s = self.bdata[offset:offset+2]
-			_t = int.from_bytes(_s[1:2],'little')*128 + int.from_bytes(_s[:1],'little')-128
-		else:
-			_t = _s
-			
-		return size,_t
+		level = 1
+		real_size = 0
+		while level < 100:
+			current_data = struct.unpack('<B',self.bdata[offset:offset+level][-1:])[0]
+			if current_data & 128:
+				real_size += (current_data-128)*(128**(level-1))
+				level += 1
+			else:
+				real_size += current_data*(128**(level-1))
+				break
+		return level,real_size
 
 
 	def init(self,):
