@@ -170,12 +170,26 @@ class JSON2DICT(object):
 		return offset,rdata
 
 	def _read_vardata(self,offset,offset_start):
-		offset,data = self.read(1,offset_start,offset)
-		t1, = struct.unpack('<B',data)
-		if t1&128:
+		"""Read MySQL JSON binary variable-length string data."""
+		length = 0
+		shift = 0
+		num_bytes = 0
+		max_bytes = 5  # uint32 can require up to 5 base-128 bytes
+
+		while num_bytes < max_bytes:
 			offset,data = self.read(1,offset_start,offset)
-			t2, = struct.unpack('<B',data)
-			t1 = (t1-128)+t2*128
-		offset,data = self.read(t1,offset_start,offset)
-		#print('??????????',data,offset,offset_start,t1)
-		return offset,data.decode()
+			if len(data) != 1:
+				raise ValueError("truncated JSON variable-length field")
+			byte, = struct.unpack('<B',data)
+			num_bytes += 1
+			length |= (byte & 0x7f) << shift
+			if not (byte & 0x80):
+				if length > 0xffffffff:
+					raise ValueError("JSON variable-length field exceeds uint32")
+				offset,data = self.read(length,offset_start,offset)
+				if len(data) != length:
+					raise ValueError("truncated JSON string data")
+				return offset,data.decode()
+			shift += 7
+
+		raise ValueError("invalid JSON variable-length field")

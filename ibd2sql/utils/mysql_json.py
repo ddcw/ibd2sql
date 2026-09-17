@@ -141,7 +141,7 @@ class jsonob(object):
 			if x[0] == 0x0c: #字符串
 				_s,size = self.read_var(x[1])
 				#size = int.from_bytes(self.bdata[x[1]:x[1]+1],'little') #先都按1字节计算
-				value.append(self.bdata[x[1]+_s:x[1]+_s+size].decode()) 
+				value.append(self.bdata[x[1] + _s:x[1] + _s + size].decode())
 			elif x[0] == 0x0b:
 				value.append(struct.unpack('d',self.bdata[x[1]:x[1]+8])[0])
 			elif x[0] == 0x07: # int32
@@ -164,23 +164,32 @@ class jsonob(object):
 				
 	def read_var(self,offset):
 		"""
-		读mysql的varchar的 记录长度的大小, 范围字节数量和大小
-		如果第一bit是1 就表示要使用2字节表示:
-			后面1字节表示 使用有多少个128字节, 然后加上前面1字节(除了第一bit)的数据(0-127) 就是最终数据
------------------------------------------------------
-| 1 bit flag | 7 bit data | if flag, 8 bit data*128 |
------------------------------------------------------
+		Read MySQL JSON binary's variable-length data length.
+
+		Each byte stores 7 payload bits. The high bit set to 1 means that
+		another byte follows. This is the same encoding used by
+		json_binary::read_variable_length(), and it is not limited to 2 bytes.
 		"""
-		_s = int.from_bytes(self.bdata[offset:offset+1],'little')
-		size = 1
-		if _s & (1<<7):
+		length = 0
+		shift = 0
+		size = 0
+		max_bytes = 5  # uint32 can require up to 5 base-128 bytes
+
+		while size < max_bytes:
+			pos = offset + size
+			if pos >= len(self.bdata):
+				raise ValueError("truncated JSON variable-length field")
+			byte = self.bdata[pos]
 			size += 1
-			_s = self.bdata[offset:offset+2]
-			_t = int.from_bytes(_s[1:2],'little')*128 + int.from_bytes(_s[:1],'little')-128
-		else:
-			_t = _s
-			
-		return size,_t
+			length |= (byte & 0x7f) << shift
+			if not (byte & 0x80):
+				if length > 0xffffffff:
+					raise ValueError("JSON variable-length field exceeds uint32")
+				return size, length
+			shift += 7
+
+		raise ValueError("invalid JSON variable-length field")
+
 
 
 	def init(self,):

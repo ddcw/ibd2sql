@@ -513,7 +513,7 @@ class INDEX(PAGE):
 		SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self._read_extra_20())
 		data = b''
 		if self.table.mysql_version_id > 50744:
-			data = FIRST_BLOB(self.pg,PAGENO) if not self.is_compress_page else FIRST_ZBLOB(self.pg,PAGENO)
+			data = FIRST_BLOB(self.pg,PAGENO,REAL_SIZE) if not self.is_compress_page else FIRST_ZBLOB(self.pg,PAGENO)
 		else:
 			while True:
 				_ndata = self.pg.read(PAGENO)

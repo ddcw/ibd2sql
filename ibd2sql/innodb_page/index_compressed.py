@@ -339,7 +339,7 @@ class INDEX(PAGE):
 		SPACE_ID,PAGENO,BLOB_HEADER,REAL_SIZE = struct.unpack('>3LQ',self._read_overpage_20_new())
 		data = b''
 		if self.table.mysqld_version_id > 50744:
-			data = FIRST_BLOB(self.f,PAGENO)
+			data = FIRST_BLOB(self.f,PAGENO,REAL_SIZE)
 		else:
 			while True:
 				_ndata = self.pg.read(PAGENO)
