@@ -467,7 +467,7 @@ class IBD2SQL_WEB(INDEX):
 
 def RUN_IBD2SQL_WEB(file_list,opt,log,server_class=HTTPServer, handler_class=MY_HANDLER):
 	BIND_HOST = '0.0.0.0' if 'host' not in opt else opt['host']
-	BIND_PORT = 8080      if 'port' not in opt else opt['port']
+	BIND_PORT = 8080      if 'port' not in opt else int(opt['port'])
 	log.info(f'listen {BIND_HOST}:{BIND_PORT}')
 	IDX = []
 	for file_base in file_list:
