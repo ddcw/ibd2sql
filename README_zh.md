@@ -1,81 +1,35 @@
+[English](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/README.md)
+
 # ibd2sql
 
-[english](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/README.md)
+[ibd2sql](https://github.com/ddcw/ibd2sql) 是一个解析MySQL数据文件的工具. 使用python3编写的,没得依赖包, 下载就能使用.
 
-[ibd2sql](https://github.com/ddcw/ibd2sql) 是一个解析MySQL数据文件的工具. ~~老NB了~~. 使用python3编写的,没得依赖包, 下载就能使用, 所以也就不提供二进制包了.
-
-当你只剩下IBD文件或者剩下半截数据文件的时候, 你可以使用`ibd2sql`去恢复其中的数据.
-
-或者, 当你drop/truncate一张表之后,你可以使用`ibd2sql`扫描磁盘去恢复剩余的数据.
+可用于表结构获取,数据恢复(delete/drop/truncate/rm)与学习.
 
 
 
 # 下载和使用
 
 ## 下载
-当前最新版是: ibd2sql-v2.3 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz)
-
-**Linux**
-
 ```shell
 wget https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
 unzip ibd2sql-v2.x.zip
 cd ibd2sql-ibd2sql-v2.x/
 ```
 
-
-
-**Windows**
-
-点击下载: https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
-
-
-
 ## 使用
-
-**Linux**
 
 ```shell
 python3 main.py your_file.ibd --sql --ddl
 ```
 
+使用说明: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
 
+恢复被delete的数据: [docs/example_recovery_delete_row.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_delete_row.md)
 
-**Windows**
+恢复被drop的数据: [docs/example_recovery_drop_table.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_drop_table.md)
 
-windows环境python3是叫做python,名字问题,小坑
-
-```powershell
-python main.py your_file.ibd --sql --ddl
-```
-
-
-
-## WEB 控制台
-
-```
-python3 main.py your_file.ibd --web
-# 执行之后,就可以使用浏览器访问: http://你的IP地址:8080
-```
-
-
-
-完整的使用说明: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
-
-
-
-# 性能
-
-环境说明: MySQL 8.0.28  Python 3.10.4 CPU MHz: 2688.011 
-
-| ibd2sql VERSION | PARALLEL | RATE                   |
-| --------------- | -------- | ---------------------- |
-| 2.0             | 1        | 50941 行每秒, 25MB/s   |
-| 2.0             | 8        | 209993 行每秒, 104MB/s |
-| 1.12            | -        | 12037 行每秒, 6MB/s    |
-| 0.3             | -        | 53998 行每秒, 26MB/s   |
-
-2000W行数据,5GB大小, 开16并发,差不多2分半解析完. 由于CPU不多,磁盘性能也不行, 所以没测出来上限是多少 -_-
+恢复被truncate的数据: [docs/example_recovery_truncate_table.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_truncate_table.md)
 
 
 
@@ -95,9 +49,10 @@ python3 main.py your_file.ibd --web
 
 要求: Python >= 3.6
 
-支持: MySQL 5.6, MySQL 5.7, MySQL 8.0, MySQL 8.4. MySQL 9.x
+支持: MySQL 5.x, MySQL 8.x, MySQL 9.x
 
 
 
 **数据备份更重要**, 事后恢复不是万能的.
+
 

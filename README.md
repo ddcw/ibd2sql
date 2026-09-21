@@ -1,6 +1,6 @@
-# ibd2sql
-
 [中文版介绍](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/README_zh.md)
+
+# ibd2sql
 
 [ibd2sql](https://github.com/ddcw/ibd2sql) is tool of transform MySQL IBD file to SQL(data). Write using Python3 .
 
@@ -14,67 +14,25 @@ Or when you drop/truncate some table, you can also use `ibd2sql` to parse the re
 
 ## download
 
-lastest version: ibd2sql-v2.3 [https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz](https://github.com/ddcw/ibd2sql/archive/refs/tags/v2.3.tar.gz)
-
-**Linux**
-
 ```shell
 wget https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip
 unzip ibd2sql-v2.x.zip
 cd ibd2sql-ibd2sql-v2.x/
 ```
 
-
-
-**Windows**
-
-click https://github.com/ddcw/ibd2sql/archive/refs/heads/ibd2sql-v2.x.zip to download
-
-
-
 ## usage
-
-**Linux**
 
 ```shell
 python3 main.py your_file.ibd --sql --ddl
 ```
 
+More usage: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
 
+Recovery deleted data: [docs/example_recovery_delete_row.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_delete_row.md)
 
-**Windows**
+Recovery dropped data: [docs/example_recovery_drop_table.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_drop_table.md)
 
-Python3 is called Python on Windows
-
-```powershell
-python main.py your_file.ibd --sql --ddl
-```
-
-
-
-## WEB CONSOLE
-
-```
-python3 main.py your_file.ibd --web
-# and then, you can visit http://yourip:8080 to view that ibd file
-```
-
-
-
-more usage: [docs/USAGE.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/USAGE.md)
-
-
-
-# PERFORMANCE
-
-env: MySQL 8.0.28  Python 3.10.4 CPU MHz: 2688.011 
-
-| ibd2sql VERSION | PARALLEL | RATE                   |
-| --------------- | -------- | ---------------------- |
-| 2.0             | 1        | 50941 rows/s, 25MB/s   |
-| 2.0             | 8        | 209993 rows/s, 104MB/s |
-| 1.12            | -        | 12037 rows/s, 6MB/s    |
-| 0.3             | -        | 53998 rows/s, 26MB/s   |
+Recovery truncated data: [docs/example_recovery_truncate_table.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/docs/example_recovery_truncate_table.md)
 
 
 
@@ -94,6 +52,7 @@ detail: [docs/CHANGELOG.md](https://github.com/ddcw/ibd2sql/blob/ibd2sql-v2.x/do
 
 require: Python >= 3.6
 
-support: MySQL 5.6, MySQL 5.7, MySQL 8.0, MySQL 8.4. MySQL 9.x
+support: MySQL 5.x, MySQL 8.x, MySQL 9.x
 
 **Data backup is very important**
+

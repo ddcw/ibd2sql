@@ -1,5 +1,16 @@
 # CHANGE LOG
 
+
+## 2.4(2026.09.21)
+1. 完善文档
+2. 修复BUG: 索引注释关键字COMMENT
+3. 修复BUG: enum/set默认值
+4. 修复BUG: 解析5.x的frm文件时,需要考虑默认使用第一个非空唯一索引作为主键
+5. 修复BUG: --set port=INT
+6. 修复BUG: json中某字符串是可能大于16K的
+
+
+
 ## 2.3(2026.05.26)
 2.3
 1. 修复BUG: var & not null & row_format=compressed
@@ -59,3 +70,4 @@ try it !
 | v2.1    | 2025.10.24 | fix some bugs & add `--set bad-pages=fast/try/skip`            |
 | v2.2    | 2026.01.08 | fix some bugs & support parser ibdata1  & add scan disk to recover dropped/truncated table          |
 | v2.3    | 2026.05.26 | fix some bugs & support recover dropped/truncated table for win         |
+| v2.4    | 2026.09.21 | fix some bugs & improve doc         |
