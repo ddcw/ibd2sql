@@ -410,7 +410,7 @@ class MYSQLFRM(object):
 			datetime_precision = 0
 			datetime_precision_null = 1
 			if col['metadata']['field_type'] == 246: # decimal
-				numeric_precision = char_length - 2
+				numeric_precision = char_length - 2 if pack_flag&1 else char_length - 1 # issue 98
 				numeric_scale = (pack_flag>>8) & 31
 				numeric_scale_null = False
 			if field_type in [18,19] and char_length > 19:
@@ -517,7 +517,7 @@ class MYSQLFRM(object):
 				column_type_utf8 = 'binary'
 				field_type = 29
 			if field_type == 21 and not numeric_scale_null: #decimal
-				column_type_utf8 += f"({numeric_precision},{numeric_scale})" 
+				column_type_utf8 += f"({numeric_precision},{numeric_scale}){'' if pack_flag&1 else ' unsigned'}"  # issue 98
 			elif field_type in [22,23]:
 				column_type_utf8 += f"({','.join([ repr(item) for item in col['elements'] ])})"
 			elif field_type in [18,19,20] and datetime_precision_null != 1:
