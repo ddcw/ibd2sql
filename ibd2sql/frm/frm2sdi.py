@@ -399,6 +399,9 @@ class MYSQLFRM(object):
 			field_type = COL_TYPE[col['metadata']['field_type']][2]
 			#print(col['name'],field_type,col['metadata']['field_type'],col['metadata'])
 			char_length = col['metadata']['field_length']
+			BLOB_MAX_LEN = {249: 255, 250: 16777215, 251: 4294967295, 252: 65535}
+			if col['metadata']['field_type'] in BLOB_MAX_LEN: # 修正类型默认长度(大肥鱼发现的)
+				char_length = BLOB_MAX_LEN[col['metadata']['field_type']] 
 			pack_flag = col['metadata']['pack_flag']
 			type_default_size = COL_TYPE[col['metadata']['field_type']][1]
 			default_size = type_default_size if type_default_size > 0 else char_length
@@ -516,6 +519,8 @@ class MYSQLFRM(object):
 			if col['metadata']['field_type'] == 254 and field_type == 16 and col['metadata']['pack_flag']&1 > 0: # 是否是binary
 				column_type_utf8 = 'binary'
 				field_type = 29
+			if col['metadata']['field_type'] == 254 and field_type == 16 and int(COLLATIONS_DICT[str(collation_id)]['MAXLEN']) == 1: # 单字节字符
+				field_type = 29
 			if field_type == 21 and not numeric_scale_null: #decimal
 				column_type_utf8 += f"({numeric_precision},{numeric_scale}){'' if pack_flag&1 else ' unsigned'}"  # issue 98
 			elif field_type in [22,23]:
@@ -598,6 +603,10 @@ class MYSQLFRM(object):
 		FIRST_UK_NOT_NULL = -1
 		for i in range(len(self.KEYS['key'])):
 			idx = self.KEYS['key'][i]
+			if not ((not idx['flags']&1) and (idx['name'] != 'PRIMARY')): # 唯一性判断
+				continue
+			if sum([ 1 if COLUMN[ekey['fieldnr']-1]['char_length'] != ekey['length'] and COLUMN[ekey['fieldnr']-1]['type'] in [16,24,25,26,27,29] else 0 for eindex,ekey in enumerate(idx['key_parts'],start=1) ]) > 0: # 有前缀字段的唯一索引也不能作为主键
+				continue
 			if len(idx['key_parts']) == sum([ 0 if COLUMN[ekey['fieldnr']-1]['is_nullable'] else 1 for eindex,ekey in enumerate(idx['key_parts'],start=1) ]):
 				FIRST_UK_NOT_NULL = i
 				break

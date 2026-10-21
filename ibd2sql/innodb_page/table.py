@@ -209,6 +209,7 @@ class TABLE(object):
 		# sql/dd/types/column.h
 		data['is_var'] = COLUMN_TYPE[data['type']]['is_var']
 		data['is_big'] = True if data['char_length'] > 255 else False
+		data['can_pre'] = data['type'] in (16, 24, 25, 26, 27, 29) # 能否作为前缀索引
 		data['type_name'] = COLUMN_TYPE[data['type']]['name']
 		data['character_set_name'] = self._get_character_set_name(data['collation_id'])
 		data['character_set_maxlen'] = self._get_character_set_maxlen(data['collation_id'])
@@ -544,7 +545,8 @@ class TABLE(object):
 				data['elements'][tt[colid]]['is_pre'] = True
 			else:
 				tt[colid] = x
-				if idx_len < col_len and col['is_var']:
+				#if idx_len < col_len and col['is_var']:
+				if idx_len < col_len and col['can_pre']:
 					data['elements'][x]['is_pre'] = True
 				else:
 					data['elements'][x]['is_pre'] = False
@@ -570,7 +572,7 @@ class TABLE(object):
 				if x['length'] == 4294967295:
 					continue
 				colname = self.column[x['column_opx']]['name']
-				isvar = self.column[x['column_opx']]['is_var']
+				isvar = self.column[x['column_opx']]['can_pre'] # 只有能为前缀索引的才需要考虑,这里的isvar是用来误解的
 				e += f"{self._enclosed}{colname}{self._enclosed}{'('+str(x['pre_size'])+')' if x['is_pre'] and isvar and self.column[x['column_opx']]['type'] != 30 and idx_type_name !='FULLTEXT ' else ''}"
 				if x['order'] == 3: # 2:AESC 3:DESC
 					e += " DESC"
