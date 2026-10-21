@@ -68,7 +68,11 @@ def decompress(bdata,decompress_size):
 			ml += tml
 		ml += 4
 		match = op - offset
-		data[op:op+ml] = data[match:match+ml]
+		if offset >= ml:
+			data[op:op+ml] = data[match:match+ml]
+		else: # repeat('x',200)
+			pat = data[match:op]
+			data[op:op+ml] = (pat * (ml // offset + 1))[:ml]
 		op += ml
 	return bytes(data)
 
