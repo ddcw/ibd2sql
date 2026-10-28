@@ -1,6 +1,31 @@
 #@mysql sql/json_binary.h
 import struct
 import sys
+import base64
+#from .b2data import B2DECIMAL,map_decimal
+# 没考虑到json也会使用decimal, 会导致循环引用, 所以就把decimal搬过来了,虽然代码重复了. 但懒得新开文件导入了.
+def map_decimal(n):
+	return [ [4,9] for _ in range(n//9) ] + ([[ ((n%9)+1)//2 if n%9 < 7 else 4,n%9 ]] if n%9 > 0 else [])
+
+def _READ_DECIMAL(data,p,offset):
+	rdata = ""
+	for psize,pzfill in p:
+		tdata = int.from_bytes(data[offset:offset+psize],'big',signed=False)
+		rdata += str(tdata).zfill(pzfill)
+		offset += psize
+	return rdata,offset
+
+def B2DECIMAL(data,p1,p2):
+	p1_data = ""
+	signed = False if struct.unpack('>B',data[:1])[0] & 128 else True
+	if signed:
+		data = bytes((~b&0xff) for b in data)
+	data = struct.pack('>B',data[0]-128)+data[1:]
+	offset = 0
+	p1_data,offset = _READ_DECIMAL(data,p1,offset)
+	p2_data,offset = _READ_DECIMAL(data,p2,offset)
+	p1_data = str(0 if p1_data == '' else int(p1_data))
+	return f"{'-' if signed else ''}{p1_data}.{p2_data}"
 
 _ = """
                                                                - -----------------
@@ -101,7 +126,7 @@ class jsonob(object):
 				data  = self.read_little()
 			elif t == 0x04: #literal
 				#print("READ VALUE ENTRY literal")
-				_data = self.read_little()
+				_data = self.read_little(2) # literal固定为2
 				if _data == 1:
 					data = True
 				elif _data == 2:
@@ -110,8 +135,14 @@ class jsonob(object):
 					data = None
 				else:
 					data = ''
+				if self.ssize > 2: # 与ssize无关..., skip padding
+					self.read(self.ssize-2)
 			elif t >= 0x05 and t <= 0x06: #inline data
 				#print("READ VALUE ENTRY Inline data for INT",t,0x05,0x0a)
+				data = self.read_inline_data(t)
+				if self.ssize > 2:
+					self.read(self.ssize-2)
+			elif (t == 0x07 or t == 0x08) and self.ssize > 2:
 				data = self.read_inline_data(t)
 			else:
 				data = self.read_little()
@@ -143,21 +174,30 @@ class jsonob(object):
 				#size = int.from_bytes(self.bdata[x[1]:x[1]+1],'little') #先都按1字节计算
 				value.append(self.bdata[x[1]+_s:x[1]+_s+size].decode()) 
 			elif x[0] == 0x0b:
-				value.append(struct.unpack('d',self.bdata[x[1]:x[1]+8])[0])
+				value.append(struct.unpack('<d',self.bdata[x[1]:x[1]+8])[0])
 			elif x[0] == 0x07: # int32
-				value.append(int.from_bytes(self.bdata[x[1]:x[1]+4],'little'))
+				if self.ssize == 2:
+					value.append(int.from_bytes(self.bdata[x[1]:x[1]+4],'little',signed=True))
+				else:
+					value.append(x[1])
 			elif x[0] == 0x08: # uint32
-				value.append(int.from_bytes(self.bdata[x[1]:x[1]+4],'little'))
+				if self.ssize == 2:
+					value.append(int.from_bytes(self.bdata[x[1]:x[1]+4],'little',signed=False))
+				else:
+					value.append(x[1])
 			elif x[0] == 0x09: # int64
-				value.append(int.from_bytes(self.bdata[x[1]:x[1]+8],'little'))
+				value.append(int.from_bytes(self.bdata[x[1]:x[1]+8],'little',signed=True))
 			elif x[0] == 0x0a: # uint64
 				value.append(int.from_bytes(self.bdata[x[1]:x[1]+8],'little',signed=False))
 			elif x[0] <= 0x03: #json对象, 又递归
-				s = self.ssize
+				#s = self.ssize
+				s = 4 if x[0] == 0x01 or x[0] == 0x03 else 2 # 由类型决定大小
 				size = int.from_bytes(self.bdata[x[1]+s: x[1]+s+s ], 'little')
 				data = self.bdata[x[1]:x[1]+size]
 				_aa = jsonob(data,x[0])
 				value.append(_aa.init())
+			elif x[0] == 0x0f: # opaque
+				value.append(self._decode_opaque(x[1]))
 			else:
 				value.append(x[1])
 		self.value = value
@@ -183,9 +223,74 @@ class jsonob(object):
 				break
 		return level,real_size
 
+	def read_scalar(self,):
+		if self.t == 0x04: # literal
+			return {0:None, 1:True, 2:False}.get(self.bdata[0])
+		elif self.t <= 0x0a: # (u)int16-64
+			n = {0x05:2, 0x06:2, 0x07:4, 0x08:4, 0x09:8,0x0a:8}[self.t]
+			signed = self.t in (0x05,0x07,0x09)
+			return int.from_bytes(self.bdata[:n],'little',signed=signed)
+		elif self.t == 0x0b: # double
+			return struct.unpack('<d',self.bdata[:8])[0]
+		elif self.t == 0x0c: # string
+			_s,size = self.read_var(0)
+			return self.bdata[_s:_s+size].decode('utf-8')
+		elif self.t == 0x0f: # custom data (JSONB_TYPE_OPAQUE): mysql: decimal,date,time,datetime
+			return self._decode_opaque(0)
+		return None
+
+	def _decode_opaque(self,pos):
+		field_type = self.bdata[pos]
+		pos += 1
+		_s,size = self.read_var(pos)
+		data = self.bdata[pos+_s:pos+_s+size]
+		#print('type:',field_type,'data:',data)
+		rdata = None
+		# 我们这里是吧decimal当作字符串的,所以会被json.dumps加上引号... 使用float,double会有精度问题, 使用Decimal的话,也会有json.dumps问题(Object of type Decimal is not JSON serializable); 就只有自己在json.dumps外面封装一层了. (以后再说吧-_-)
+		if field_type == 246: # decimal, Json_decimal::get_binary
+			precision,scale = data[0],data[1]
+			p1 = map_decimal(precision-scale)
+			p1.reverse()
+			p2 = map_decimal(scale)
+			rdata = B2DECIMAL(data[2:],p1,p2)
+		elif field_type in [7,10,11,12]: # timestamp,date,time,datetime
+			rdata = self._decode_packed_datetime(field_type,data[:8]) # 固定8字节(TIME_to_longlong_packed)
+		elif field_type == 253: # MYSQL_TYPE_VAR_STRING varchar
+			rdata = data.decode('utf-8','replace')
+		else:
+			rdata = f'base64:type{field_type}:{base64.b64encode(data).decode()}'
+		return rdata
+
+	def _decode_packed_datetime(self,field_type,data):
+		packed = int.from_bytes(data,'little',signed=True)
+		signed = packed < 0
+		tp = -packed if signed else packed
+		sign = '-' if signed else ''
+		us = tp%(1<<24) # 小段字节序的,也就是前面部分是us.感觉描述得还是别扭... [us:dt]
+		dt = tp>>24
+		rdata = None
+		if field_type == 11: # time
+			rdata = f'{sign}{dt>>12:02d}:{(dt>>6)%64:02d}:{dt%64:02d}'
+		else:
+			ymd = dt >> 17
+			hms = dt % (1<<17)
+			ym = ymd>>5
+			year = ym//13
+			month = ym%13
+			day = ymd%32
+			if field_type == 10: # date
+				rdata = f'{sign}{year:04d}-{month:02d}-{day:02d}'
+			else: # datetime,timestamp
+				rdata = f'{sign}{year:04d}-{month:02d}-{day:02d} {hms>>12:02d}:{(hms>>6)%64:02d}:{hms%64:02d}'
+		# 精度,与mysql保持一致,固定输出精度
+		if field_type != 10: 
+			rdata += '.' + str(us).zfill(6)
+		return rdata
 
 	def init(self,):
 		#print(self.bdata)
+		if self.t >= 0x04: # 标量
+			return self.read_scalar()
 		self.element_count = self.read_little()
 		#print("ELEMENT COUNT:",self.element_count)
 		#print(self.read_little())
@@ -241,7 +346,7 @@ class jsonob(object):
 
 	def read_inline_data(self,t):
 		n = 0
-		is_unsigned = True
+		is_unsigned = False # 默认是False,居然写成了True这么久都没发现...
 		#print("\tread_inline_data TYPE:",t)
 		if t == 0x05: #int16
 			n = 2
