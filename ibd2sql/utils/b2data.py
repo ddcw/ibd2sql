@@ -73,7 +73,7 @@ def B2FLOAT(data):
 	return struct.unpack('f',data)[0]
 
 def B2YEAR(data):
-	return B2UINT1(data) + 1900
+	return '0000' if data == b'\x00' else B2UINT1(data) + 1900
 
 def __year(data):
 	return str(data).zfill(4)
@@ -107,23 +107,23 @@ def B2TIME(data,pad): #(data,with fsp)
 	fractional = ''
 	if t < 0:
 		signed = '-'
-		hour= 2047 - ((8384512&t)>>12)
-		minute = 63 - ((4032&t)>>6)
-		second = 63 - (63&t)
 		if pad > 0:
 			fr = int.from_bytes(data[3:],'big')
 			if fr == 0:
-				second += 1
+				t = -t
 				fractional = 0
 			else:
+				t = -t - 1
 				fractional = 2**((pad+1)//2*8) - fr
+		else:
+			t = -t
 	else:
-		hour = (8384512&t)>>12
-		minute = (4032&t)>>6
-		second = 63&t
 		if pad > 0:
 			fractional = int.from_bytes(data[3:],'big')
-	if fractional != '':
+	hour = (8384512&t)>>12
+	minute = (4032&t)>>6
+	second = 63&t
+	if pad > 0:
 		fractional = "." + str(fractional).zfill(pad)[:pad]
 	return repr(signed + __hour(hour) + ':' + __minute(minute) + ':' + __second(second) 
 		+ fractional)
@@ -331,7 +331,7 @@ def B2DECIMAL(data,p1,p2):
 	p1_data,offset = _READ_DECIMAL(data,p1,offset)
 	p2_data,offset = _READ_DECIMAL(data,p2,offset)
 	p1_data = str(0 if p1_data == '' else int(p1_data))
-	return f"{'-' if signed else ''}{p1_data}.{p2_data}"
+	return f"{'-' if signed else ''}{p1_data}{'.'+p2_data if p2_data!='' else ''}"
 		
 	p1_data = "".join([ toint(bdata).zfill(zfill) for zfill,bdata in data[0] ])
 	p2_data = "".join([ toint(bdata).zfill(zfill) for zfill,bdata in data[1] ])
@@ -356,14 +356,33 @@ def B2SET(data,elements):
 
 # GEOMETRY
 def B2GEOMETRY(data,srsid):
-	extra_srsid = f"{srsid:08x}" if srsid == 0 else ""
+	return f"0x{data.hex()}" # 实际上并不需要srsid...
+	extra_srsid = f"0{srsid:08x}" if srsid == 0 else ""
 	return f"0x{extra_srsid}{hex(int.from_bytes(data,'big',signed=False))[2:]}"
 
 # VECTOR
 def B2VECTOR(data):
 	return data.hex()
 
+from .mysql_json import RawNumber
+def _json_dump(obj):
+	if isinstance(obj, RawNumber): # decimal类型原样输出
+		return obj.s
+	if isinstance(obj, str): # 字符串 opaque
+		return json.dumps(obj, ensure_ascii=False)
+	if isinstance(obj, dict): # dict则递归解析
+		return '{' + ', '.join(
+			json.dumps(str(k), ensure_ascii=False) + ': ' + _json_dump(v)
+			for k, v in obj.items()
+		) + '}'
+	if isinstance(obj, list): # list 也递归,只不过符号不一样
+		return '[' + ', '.join(_json_dump(x) for x in obj) + ']'
+	return json.dumps(obj, ensure_ascii=False) # 剩余的
+
 def B2JSON(data):
+	if data == b'': # json也可能为空的
+		return 'null'
+	return repr(_json_dump( jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init() ))
 	#return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init()))
-	return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init(),ensure_ascii=False))
+	#return repr(json.dumps(jsonob(data[1:],struct.unpack('<B',data[:1])[0]).init(),ensure_ascii=False))
 	#return repr(json.dumps(JSON2DICT(data).init()))

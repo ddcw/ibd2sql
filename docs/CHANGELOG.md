@@ -1,5 +1,39 @@
 # CHANGE LOG
 
+## 2026.10.30
+```txt
+1. 修复了一些frm的bug
+	1. set/enum 默认值错位/复用(set/enum是会公用默认值存储的)
+	2. date/datetime/timestamp/year 默认值
+	3. decimal小数0的默认值
+	4. varbinary默认值为''
+	5. 整数的符号判断取反了
+	6. time默认值
+	7. bit默认值
+	8. FULLTEXT和SPATIAL flag取反了
+	9. default CURRENT_TIMESTAMP(n)精度丢失
+	10. 5.x中timestamp显示要求null属性
+	11. 索引注释错位
+	12. spatial索引丢失
+
+2. 修复了json类型的一些bug
+	1. json支持decimal对象
+	2. json可能为空
+
+3. 修复了一些set/enum的bug
+	1. set 元素太多,边界问题,死循环
+
+4. 修复了一些其它bug
+	1. year类型为0的时候,不应该返回1900
+	2. --set schema匹配的时候应该是schema_ref而不是tablespace_ref
+	3. decimal(m,0)时,不显示'.'
+	4. time可能差1秒
+	5. 区分了default null和default ''
+	6. 支持RANGE COLUMNS 和 LIST COLUMNS
+	7. 二进制类型默认值
+	8. geometry不需要手动补srsid
+	9. varbinary含null默认值
+```
 
 ## 2.4(2026.09.21)
 1. 完善文档

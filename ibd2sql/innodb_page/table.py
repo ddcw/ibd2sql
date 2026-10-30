@@ -31,8 +31,9 @@ PARTITION_TYPE = {
 	1:"HASH",
 	3:"KEY",
 	7:"RANGE",
-	9:"RANGE",
-	8:"LIST"
+	8:"LIST",
+	9:"RANGE COLUMNS",
+	10:"LIST COLUMNS",
 }
 
 def str2dict(data):
@@ -218,6 +219,21 @@ class TABLE(object):
 			data['column_type_utf8'] = column_type_utf8(data)
 
 		data['default'] = 'null' if data['default_value_utf8_null'] else repr(data['default_value_utf8'])
+
+		# 二进制默认值显示0x的修复 (其实后面根本没有使用这个data['default'], 
+		# 所以我们实际上是修复的default_value_utf8), --print是展示的sdi原始信息,所以不影响
+		if data['collation_id'] == 63 and data.get('default_value') and self.mysql_version_id >= 80000:
+			_raw = base64.b64decode(data['default_value'])
+			if data['type'] == 16: # varbinary
+				_lb = 2 if (data['char_length'] // int(data['character_set_maxlen']) ) > 255 else 1
+				_raw = _raw[_lb:_lb + int.from_bytes(_raw[:_lb],'little')]
+			else: # binary (定长)
+				_raw = _raw
+			data['default_value_utf8'] = f"0x{_raw.hex()}" if _raw else ''
+		# 二进制默认值设置:
+		#print(data['collation_id'] == 63,(not data['default_value_null']),data['default_value'] != '',data['name'],data['default_value'])
+		#if data['collation_id'] == 63 and (not data['default_value_null']) and data['default_value'] != '':
+		#	data['default'] = '0x'+base64.b64decode(data['default_value']).rstrip(b'\x00').hex()
 
 		se_private_data = {} if 'se_private_data' not in data else str2dict(data['se_private_data'])
 
@@ -407,7 +423,7 @@ class TABLE(object):
 			data['args'] = (element_b64_format(data['elements']),)
 		elif data['type_name'] in ['SET']: # set
 			data['size'] = (len(data['elements'])+7)//8
-			data['size'] = 8 if data['size'] == 5 else data['size']
+			data['size'] = 8 if data['size'] >= 5 else data['size']
 			data['decode'] = B2SET
 			data['args'] = (element_b64_format(data['elements']),)
 		elif data['type_name'] in ['GEOMETRY']: # geometry
@@ -472,20 +488,47 @@ class TABLE(object):
 				ddl += "" if col['is_nullable'] else "NOT NULL "
 				
 			else:
-				# null & default
-				if col['default_value_null'] and col['default_value_utf8'] == '' and col['is_nullable']:
+				# null & default (注意:timestamp要求显示设置null属性, 8.0会自动添加, 但5.7会报错...)
+				# 就顺便将其解耦吧...
+				if not col['is_nullable']:
+					ddl += "NOT NULL "
+				elif col['type_name'] in ('TIMESTAMP','TIMESTAMP2'):
+					ddl += "NULL "
+				if col['default_option'] != '': # 默认值是表达式
+					is_expr = (col['default_option'].find(')') >= 0 and not col['default_option'].upper().startswith('CURRENT_TIMESTAMP'))
+					ddl += f"DEFAULT ({col['default_option']}) " if self.mysql_version_id > 80012 and is_expr else f"DEFAULT {col['default_option']} "
+				elif not col['default_value_utf8_null']: # 有默认值
+					if col['default_value_utf8'] == '':
+						ddl += "DEFAULT '' " 
+					elif col['type'] == 17 or col['type_name'] == 'BIT' or col['collation_id'] == 63: # 特色默认值显示原值
+						ddl += f"DEFAULT {col['default_value_utf8']} "
+					else: # 默认值加上引号
+						ddl += f"DEFAULT {repr(col['default_value_utf8'])} "
+				elif col['is_nullable']: # 无默认值,则使用default null
 					ddl += "DEFAULT NULL "
-				elif col['default_value_utf8'] == '':
-					ddl += "NULL " if col['is_nullable'] else "NOT NULL "
-				elif col['default_option'] != '': # default expr
-					is_expr = True if col['default_option'].find(')')>=0 else False
-					if not is_expr:
-						ddl += "NULL " if col['is_nullable'] else "NOT NULL "
-					ddl += f"DEFAULT ({col['default_option']}) " if self.mysql_version_id >80012 and is_expr else f"DEFAULT {col['default_option']} "
-				else:
-					if not col['is_nullable']:
-						ddl += "NOT NULL "
-					ddl += f"DEFAULT {col['default_value_utf8']} " if col['collation_id'] == 63 or col['type'] == 17 else f"DEFAULT {repr(col['default_value_utf8'])} "
+				
+			#	if col['default_value_utf8_null'] and col['is_nullable']:
+			#		ddl += "DEFAULT NULL "
+			#	elif col['default_value_utf8'] == '':
+			#		if col['default_value_utf8_null']: # 无default
+			#			ddl += "NULL " if col['is_nullable'] else "NOT NULL "
+			#		else: # 有default,但是为''
+			#			if not col['is_nullable']:
+			#				ddl += "NOT NULL "
+			#			ddl += "DEFAULT '' "
+			#	elif col['default_option'] != '': # default expr
+			#		#is_expr = True if col['default_option'].find(')')>=0 else False
+			#		# 还有无括号的情况...
+			#		is_expr = (col['default_option'].find(')') >= 0 and not col['default_option'].upper().startswith('CURRENT_TIMESTAMP'))
+			#		if not is_expr:
+			#			ddl += "NULL " if col['is_nullable'] else "NOT NULL "
+			#		ddl += f"DEFAULT ({col['default_option']}) " if self.mysql_version_id >80012 and is_expr else f"DEFAULT {col['default_option']} "
+			#		print(col['type_name'])
+			#	else:
+			#		if not col['is_nullable']:
+			#			ddl += "NOT NULL "
+			#		#ddl += f"DEFAULT {col['default_value_utf8']} " if col['collation_id'] == 63 or col['type'] == 17 else f"DEFAULT {repr(col['default_value_utf8'])} "
+			#		ddl += f"DEFAULT {col['default_value_utf8']} " if col['collation_id'] == 63 or col['type'] == 17 or col['type_name'] == 'BIT' else f"DEFAULT {repr(col['default_value_utf8'])} "
 			# srsid
 			if not col['srs_id_null']:
 				ddl += f"/*!80003 SRID {col['srs_id']} */ "
@@ -603,7 +646,7 @@ class TABLE(object):
 			if partition_type in ['HASH','KEY']:
 				ddl = f"/*!50100 PARTITION BY {partition_type} ({dd['dd_object']['partition_expression_utf8']})\nPARTITIONS {len(dd['dd_object']['partitions'])} */"
 			else:
-				opt = "LESS THAN" if partition_type == "RANGE" else "IN"
+				opt = "LESS THAN" if partition_type[:5] == "RANGE" else "IN"
 				ddl = f"/*!50100 PARTITION BY {partition_type}({dd['dd_object']['partition_expression_utf8']})\n("
 				for p in dd['dd_object']['partitions']:
 					ddl += f" PARTITION {p['name']} VALUES {opt} ({p['description_utf8']}) ENGINE = {p['engine']},\n"

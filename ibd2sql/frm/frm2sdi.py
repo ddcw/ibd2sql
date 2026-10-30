@@ -233,6 +233,8 @@ class MYSQLFRM(object):
 
 		# 读取索引的注释
 		for i in range(keys):
+			if not(INDEX[i]['flags'] & 4096): # HA_USES_COMMENT = (1 << 12) 没得默认值的就不用考虑了...
+				continue
 			INDEX[i]['comment'] = self.read(self.read_int(2)).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.read_int(2)).decode()
 
 		self.KEYS = {
@@ -338,22 +340,44 @@ class MYSQLFRM(object):
 			#print(self.COLUMNS['field'][i]['metadata'])
 		_filedname = self.read(NAMESIZE+2)
 		
+		INTERVALS = [] # 先记录set/enum,(可能重复使用...)
+		for _ in range(self.COLUMNS['interval_count']):
+			__ = self.read(1)
+			element = []
+			tdata = b''
+			while True:
+				ch = self.read(1)
+				if ch == b'' or ch == b'\x00':
+					break
+				if ch == b'\xff':
+					element.append(tdata.decode())
+					tdata = b''
+					continue
+				tdata += ch
+			INTERVALS.append(element)
+
+		# 然后再取值
 		for i in range(self.COLUMNS['fields']):
-			if self.COLUMNS['field'][i]['metadata']['field_type'] in [247,248]:
-				tdata = b''
-				terminator = self.read(1)
-				element = []
-				while True:
-					edata = self.read(1)
-					if edata == b'\x00':
-						break
-					elif edata == terminator:
-						element.append(tdata.decode())
-						tdata = b''
-						continue
-					else:
-						tdata += edata
-				self.COLUMNS['field'][i]['elements'] = element
+			m = self.COLUMNS['field'][i]['metadata']
+			if m['field_type'] in (247,248):
+				_nr = m['interval_nr'] - 1
+				self.COLUMNS['field'][i]['elements'] = INTERVALS[_nr] if 0 <= _nr < len(INTERVALS) else []
+	#	for i in range(self.COLUMNS['fields']):
+	#		if self.COLUMNS['field'][i]['metadata']['field_type'] in [247,248]:
+	#			tdata = b''
+	#			terminator = self.read(1)
+	#			element = []
+	#			while True:
+	#				edata = self.read(1)
+	#				if edata == b'\x00' or edata == b'': # 结束
+	#					break
+	#				elif edata == terminator:
+	#					element.append(tdata.decode())
+	#					tdata = b''
+	#					continue
+	#				else:
+	#					tdata += edata
+	#			self.COLUMNS['field'][i]['elements'] = element
 		# 先读取enum/set的元数,再读取默认值: issue:93
 		for i in range(self.COLUMNS['fields']):
 			self.COLUMNS['field'][i]['comment'] = self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(self.COLUMNS['field'][i]['metadata']['comment_length']).decode()
@@ -413,9 +437,10 @@ class MYSQLFRM(object):
 			datetime_precision = 0
 			datetime_precision_null = 1
 			if col['metadata']['field_type'] == 246: # decimal
-				numeric_precision = char_length - 2 if pack_flag&1 else char_length - 1 # issue 98
+				#numeric_precision = char_length - 2 if pack_flag&1 else char_length - 1 # issue 98
 				numeric_scale = (pack_flag>>8) & 31
 				numeric_scale_null = False
+				numeric_precision = char_length - (1 if numeric_scale > 0 else 0) - (1 if pack_flag&1 else 0)
 			if field_type in [18,19] and char_length > 19:
 				datetime_precision = char_length - 20
 				datetime_precision_null = 0
@@ -423,7 +448,9 @@ class MYSQLFRM(object):
 				datetime_precision = char_length - 11
 				datetime_precision_null = 0
 			if field_type == 22: # enum 重新计算type_default_size
-				type_default_size = 2 if len(col['elements']) >= 2**8 else 1
+				#type_default_size = 2 if len(col['elements']) >= 2**8 else 1
+				_sz = (len(col['elements'])+7)//8
+				type_default_size = 8 if _sz >= 5 else _sz
 				options = f'interval_count={len(col["elements"])}'
 			elif field_type == 23: # set
 				type_default_size = (len(col['elements'])+7)//8
@@ -441,59 +468,65 @@ class MYSQLFRM(object):
 				default_value_null = False
 			default_value = b''
 			default_value_utf8 = ''
-			if type_default_size > 0 or field_type in [21,22,23]: # 定长类型的默认值
+			if type_default_size > 0 or field_type in [17,21,22,23]: # 定长类型的默认值(17bit也是)
 				default_value = col['default_bin']
 				datasize = len(default_value)
 				if field_type in [2,3,4,9,10]: # int
-					default_value_utf8 = repr(int.from_bytes(default_value, byteorder='little', signed=False if pack_flag&1 == 1 else True))
+					default_value_utf8 = repr(int.from_bytes(default_value, byteorder='little', signed=False if pack_flag&1 == 0 else True)) # 虽然只影响默认值的展示, 但也得纠正
+				elif field_type == 17: # bit
+					_bits = int.from_bytes(default_value,'big') & ((1 << char_length) - 1)
+					default_value_utf8 = f"b'{_bits:b}'"
 				elif field_type == 5: # float
 					default_value_utf8 = struct.unpack('f',default_value)[0]
 				elif field_type == 6: # double
 					default_value_utf8 = struct.unpack('d',default_value)[0]
 				elif field_type == 18: # timestamp
-					default_value_utf8 = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(BDATA2INTBD(default_value)))
+					#default_value_utf8 = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(BDATA2INTBD(default_value)))
+					default_value_utf8 = B2TIMESTAMP(default_value, datetime_precision)[1:-1]
 				elif field_type == 14: # year
-					default_value_utf8 = BDATA2INTBD(default_value)+1900
+					#default_value_utf8 = BDATA2INTBD(default_value)+1900
+					default_value_utf8 = B2YEAR(default_value)
 				elif field_type == 15:
 					signed,year,month,day = INNODB_TIMESPLIT(
-						BDATA2INTBD(default_value[:3]),
+						int.from_bytes(default_value[:3],'little'),
 						24,
 						[[0,1], [1,14], [15,4], [19,5]])
 					jingdu = BDATA2INTBD(default_value[3:]) if datasize > 3 else ''
-					rdata = f"{'-' if signed == 0 else ''}{year}-{str(month).zfill(2)}-{str(day).zfill(2)}{'.'+str(jingdu) if datasize > 3 else ''}"
+					# date没得负, 范围:1000-01-01' to '9999-12-31'
+					rdata = f"{year:04d}-{str(month).zfill(2)}-{str(day).zfill(2)}{'.'+str(jingdu) if datasize > 3 else ''}"
 					default_value_utf8 = rdata
 				elif field_type == 19: # datetime
-					signed,year_month,day,hour,minute,second = INNODB_TIMESPLIT(
-						BDATA2INTBD(default_value[:5]),
-						40,
-						[[0,1], [1,17], [18,5], [23,5], [28,6], [34,6]])
-					jingdu = BDATA2INTBD(default_value[5:]) if datasize > 5 else ''
-					year = int(year_month/13)
-					month = int(year_month%13)
-					rdata = f"{'-' if signed == 0 else ''}{year}-{str(month).zfill(2)}-{str(day).zfill(2)} {str(hour).zfill(2)}:{str(minute).zfill(2)}:{str(second).zfill(2)}{'.'+str(jingdu) if datasize > 5 else ''}"
-					default_value_utf8 = rdata
+					default_value_utf8 = B2DATETIME(default_value, datetime_precision)[1:-1]
+				#	signed,year_month,day,hour,minute,second = INNODB_TIMESPLIT(
+				#		BDATA2INTBD(default_value[:5]),
+				#		40,
+				#		[[0,1], [1,17], [18,5], [23,5], [28,6], [34,6]])
+				#	jingdu = BDATA2INTBD(default_value[5:]) if datasize > 5 else ''
+				#	year = int(year_month/13)
+				#	month = int(year_month%13)
+				#	rdata = f"{'-' if signed == 0 else ''}{year}-{str(month).zfill(2)}-{str(day).zfill(2)} {str(hour).zfill(2)}:{str(minute).zfill(2)}:{str(second).zfill(2)}{'.'+str(jingdu) if datasize > 5 else ''}"
+				#	default_value_utf8 = rdata
 				elif field_type == 20: # time
-					signed,hour,minute,second = INNODB_TIMESPLIT(
-						BDATA2INTBD(default_value[:3]),
-						24,
-						[[0,1], [1,11], [12,6], [18,6]])
-					jingdu = BDATA2INTBD(default_value[3:]) if datasize > 3 else ''
-					rdata = f"{'-' if signed == 0 else ''}{str(hour).zfill(2)}:{str(minute).zfill(2)}:{str(second).zfill(2)}{'.'+str(jingdu) if datasize > 3 else ''}"
-					default_value_utf8 = rdata
+					# 有现成的f,为啥之前不用呢??
+					default_value_utf8 = B2TIME(default_value, datetime_precision)[1:-1]
 				elif field_type == 21: # decimal
 					p1 = map_decimal(numeric_precision-numeric_scale)
+					_ = p1.reverse() 
 					p2 = map_decimal(numeric_scale)
 					psize = sum([x[0] for x in p1]) + sum([x[0] for x in p2])
 					default_value_utf8 = B2DECIMAL(default_value,p1,p2)
 				elif field_type == 22: # enum
-					default_value_utf8 = col['elements'][BDATA2INTBD(default_value)]
+					#default_value_utf8 = col['elements'][BDATA2INTBD(default_value)-1]
+					default_value_utf8 = col['elements'][(int.from_bytes(default_value,'little',signed=False))-1]
 				elif field_type == 23: # set
-					_tdata = BDATA2INTBD(default_value)
+					#_tdata = BDATA2INTBD(default_value)
+					_tdata = int.from_bytes(default_value,'little',signed=False)
 					_sn = 0
 					_sdata = ''
 					for x in col['elements']:
 						if 1<<_sn & _tdata:
-							_sdata += col['elements'][x] + ","
+							#_sdata += col['elements'][x] + ","
+							_sdata += x + ","
 						_sn += 1
 					default_value_utf8 = _sdata[:-1]
 				elif col['metadata']['field_type'] in [15,254] and field_type == 16 and col['metadata']['pack_flag']&1 > 0:
@@ -505,11 +538,18 @@ class MYSQLFRM(object):
 					default_value_utf8 = repr(int.from_bytes(default_value, byteorder='little', signed=False if pack_flag&1 == 1 else True))
 					
 			else: # 不定长类型的默认值
-				_sizesize = 1 if char_length <= 255 else 2
 				_default_value = col['default_bin']
-				_default_value_size = int.from_bytes(_default_value[:_sizesize],byteorder='little',signed=False)
-				default_value = _default_value[_sizesize:]
-				default_value_utf8 = default_value[:_default_value_size].decode()
+				_is_bin = col['metadata']['pack_flag'] & 1 > 0
+				if col['metadata']['field_type'] == 254: # 定长,补考长度
+					default_value = _default_value
+				else: # 变长, 考虑使用1/2字节
+					_sizesize = 1 if char_length <= 255 else 2
+					_size = int.from_bytes(_default_value[:_sizesize],byteorder='little',signed=False)
+					default_value = _default_value[_sizesize:_sizesize+_size]
+				if _is_bin: # bin/varbin使用16进制
+					default_value_utf8 = '0x' + default_value.hex() if default_value else ''
+				else: # 字符型移除末尾的\x20(空格)
+					default_value_utf8 = default_value.rstrip(b'\x20').decode('utf-8','replace')
 				
 			#print(default_value_utf8,i,self.default_value_null_bitmask,default_value_null,self.pack_record)
 			default_value = base64.b64encode(default_value).decode()
@@ -544,15 +584,19 @@ class MYSQLFRM(object):
 			default_option = ''
 			if col['metadata']['unireg_type'] in [21,23]:
 				default_option = 'CURRENT_TIMESTAMP'
+				if datetime_precision > 0:
+					default_option += f'({datetime_precision})'
 				default_value_null = False
 			update_option = ''
 			if col['metadata']['unireg_type'] in [22,23]:
 				update_option = 'CURRENT_TIMESTAMP'
+				if datetime_precision > 0:
+					update_option += f'({datetime_precision})'
 				default_value_null = False
 
 			# char是定长的, 不需要记录长度. 顺便把空格干掉
-			if col['metadata']['field_type'] == 254:
-				default_value_utf8 = col['default_bin'].decode().rstrip()
+			#if col['metadata']['field_type'] == 254:
+			#	default_value_utf8 = col['default_bin'].decode().rstrip()
 
 			#spatial
 			if field_type == 30:
@@ -571,7 +615,7 @@ class MYSQLFRM(object):
 				'hidden':1,
 				'ordinal_position':col['ordinal_position'],
 				'char_length':char_length,
-				'bytes':type_default_size if type_default_size > 0 else char_length,
+				'bytes':(char_length+7)//8 if field_type == 17 else (type_default_size if type_default_size > 0 else char_length),
 				'numeric_precision':numeric_precision,
 				'numeric_scale':numeric_scale,
 				'numeric_scale_null':numeric_scale_null,
@@ -629,12 +673,14 @@ class MYSQLFRM(object):
 			'options':'',
 			'is_nullable':False,
 			'generation_expression':'',
+			'default_value':'',
 			'default_value_null':True,
 			'default_value_utf8':'',
 			'default_value_utf8_null':True,
 			'srs_id_null':True,
 			'update_option':'',
 			'is_auto_increment':False,
+			'default_option':'', # 解耦了null和default,所以需要补充系统字段的default_option属性
 			'comment':'',
 		}
 		if not self.HAVE_PRIMARY:
@@ -700,9 +746,9 @@ class MYSQLFRM(object):
 			if not idx['flags']&1 and key_type != 1:
 				key_type = 2
 			elif idx['flags'] & 1024:
-				key_type = 4
-			elif idx['flags'] & 128:
 				key_type = 5
+			elif idx['flags'] & 128:
+				key_type = 4
 			INDEX.append({
 				'name':idx['name'],
 				'options':'',
@@ -716,7 +762,7 @@ class MYSQLFRM(object):
 				'engine':'InnoDB',
 				'elements':[ {
 					'ordinal_position':eindex,
-					'length':ekey['length'] if key_type != 5 else 4294967295,
+					'length':ekey['length'] ,#if key_type != 5 else 4294967295, # 为啥之前要排除5?
 					'order':2,
 					'hidden':False,
 					'column_opx':ekey['fieldnr']-1

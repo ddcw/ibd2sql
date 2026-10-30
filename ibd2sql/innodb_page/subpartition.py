@@ -14,6 +14,10 @@ def SUB_PARTITION(dd):
 		ddl += f"/*!50100 PARTITION BY RANGE ({dd['partition_expression_utf8']})"
 	elif dd['partition_type'] == 8 : # LIST
 		ddl += f"/*!50100 PARTITION BY LIST ({dd['partition_expression_utf8']})"
+	elif dd['partition_type'] == 9: # RANGE COLUMN
+		ddl += f"/*!50100 PARTITION BY RANGE  COLUMNS ({dd['partition_expression_utf8']})"
+	elif dd['partition_type'] == 10 : # LIST COLUMN
+		ddl += f"/*!50100 PARTITION BY LIST  COLUMNS ({dd['partition_expression_utf8']})"
 	else:
 		return ddl
 	ddl += "\n"

@@ -2,6 +2,13 @@
 import struct
 import sys
 import base64
+
+# 对于json中的decimal, 我们封装一个类来辅助原始输出
+class RawNumber:
+	__slots__ = ('s',)
+	def __init__(self, s):
+		self.s = s
+
 #from .b2data import B2DECIMAL,map_decimal
 # 没考虑到json也会使用decimal, 会导致循环引用, 所以就把decimal搬过来了,虽然代码重复了. 但懒得新开文件导入了.
 def map_decimal(n):
@@ -25,7 +32,7 @@ def B2DECIMAL(data,p1,p2):
 	p1_data,offset = _READ_DECIMAL(data,p1,offset)
 	p2_data,offset = _READ_DECIMAL(data,p2,offset)
 	p1_data = str(0 if p1_data == '' else int(p1_data))
-	return f"{'-' if signed else ''}{p1_data}.{p2_data}"
+	return f"{'-' if signed else ''}{p1_data}{'.'+p2_data if p2_data!='' else ''}"
 
 _ = """
                                                                - -----------------
@@ -247,12 +254,13 @@ class jsonob(object):
 		#print('type:',field_type,'data:',data)
 		rdata = None
 		# 我们这里是吧decimal当作字符串的,所以会被json.dumps加上引号... 使用float,double会有精度问题, 使用Decimal的话,也会有json.dumps问题(Object of type Decimal is not JSON serializable); 就只有自己在json.dumps外面封装一层了. (以后再说吧-_-)
+		# 两种方案: 1. 使用不可见字符做替换 (可能冲突?)  2. 自定义json.dumps (本次选择这个)
 		if field_type == 246: # decimal, Json_decimal::get_binary
 			precision,scale = data[0],data[1]
 			p1 = map_decimal(precision-scale)
 			p1.reverse()
 			p2 = map_decimal(scale)
-			rdata = B2DECIMAL(data[2:],p1,p2)
+			rdata = RawNumber(B2DECIMAL(data[2:],p1,p2))
 		elif field_type in [7,10,11,12]: # timestamp,date,time,datetime
 			rdata = self._decode_packed_datetime(field_type,data[:8]) # 固定8字节(TIME_to_longlong_packed)
 		elif field_type == 253: # MYSQL_TYPE_VAR_STRING varchar

@@ -372,8 +372,8 @@ if __name__ == '__main__':
 		if 'table' in opt and opt['table'] != file_base['sdi']['dd_object']['name']:
 			log.info(f"table name: {opt['table']} != {file_base['sdi']['dd_object']['name']}, skip it")
 			continue
-		if 'schema' in opt and opt['schema'] != file_base['sdi']['dd_object']['tablespace_ref']:
-			log.info(f"table name: {opt['schema']} != {file_base['sdi']['dd_object']['tablespace_ref'].name}, skip it")
+		if 'schema' in opt and opt['schema'] != file_base['sdi']['dd_object']['schema_ref']:
+			log.info(f"schema name: {opt['schema']} != {file_base['sdi']['dd_object']['schema_ref']}, skip it")
 			continue
 		file_list.append(file_base)
 	if len(file_list) == 0:
