@@ -36,6 +36,9 @@ PARTITION_TYPE = {
 	10:"LIST COLUMNS",
 }
 
+# 定义最大ROW_VERSIONS, 主要逻辑是drop在使用,所以没有叫TOTAL_ROW_VERSIONS
+ROW_VERSION_DROPPED_NON = 256
+
 def str2dict(data):
 	dd = {}
 	for x in data.split(';'):
@@ -241,21 +244,21 @@ class TABLE(object):
 			if self.mysql_version_id <= 80028:
 				self.max_row_version += 1
 				data['version_added'] = self.max_row_version
-				data['version_dropped'] = 66
+				data['version_dropped'] = ROW_VERSION_DROPPED_NON
 			else:
 				data['version_added'] = 0 if 'version_added' not in se_private_data else int(se_private_data['version_added'])
-				data['version_dropped'] = 66 if 'version_dropped' not in se_private_data else int(se_private_data['version_dropped'])
-				self.max_row_version = max(data['version_added'],data['version_dropped'],self.max_row_version) if data['version_dropped'] != 66 else max(self.max_row_version,data['version_added'])
+				data['version_dropped'] = ROW_VERSION_DROPPED_NON if 'version_dropped' not in se_private_data else int(se_private_data['version_dropped'])
+				self.max_row_version = max(data['version_added'],data['version_dropped'],self.max_row_version) if data['version_dropped'] != ROW_VERSION_DROPPED_NON else max(self.max_row_version,data['version_added'])
 		else:
 			data['version_added'] = 0
-			data['version_dropped'] = 66
+			data['version_dropped'] = ROW_VERSION_DROPPED_NON
 
 		#data['physical_pos'] = int(se_private_data['physical_pos']) if 'physical_pos' in se_private_data else -1
 		data['physical_pos'] = int(se_private_data['physical_pos']) if 'physical_pos' in se_private_data else data['ordinal_position'] - 1
 		#print(data['name'],data['version_added'],data['version_dropped'])
 		#data['version_added'] = 0 if 'version_added' not in se_private_data else int(se_private_data['version_added'])
-		#data['version_dropped'] = 66 if 'version_dropped' not in se_private_data else int(se_private_data['version_dropped'])
-		#self.max_row_version = max(self.max_row_version,data['version_added'],data['version_dropped'] if data['version_dropped'] < 66 else 0)
+		#data['version_dropped'] = ROW_VERSION_DROPPED_NON if 'version_dropped' not in se_private_data else int(se_private_data['version_dropped'])
+		#self.max_row_version = max(self.max_row_version,data['version_added'],data['version_dropped'] if data['version_dropped'] < ROW_VERSION_DROPPED_NON else 0)
 		data['table_id'] = 0 if 'table_id' not in se_private_data else se_private_data['table_id']
 		data['size'] = 0
 		data['decode'] = None
@@ -465,7 +468,7 @@ class TABLE(object):
 			colname_rm = f"_dropped_v{col['version_dropped']}"
 			colname_rm2 = f"!hidden!_dropped_v{col['version_dropped']}_p{col['physical_pos']}_"
 			colname = col['name']
-			if col['version_dropped'] != 66 :
+			if col['version_dropped'] != ROW_VERSION_DROPPED_NON :
 				if colname.endswith(colname_rm):
 					colname_len = len(colname) - len(colname_rm)
 					colname = colname[:colname_len]
@@ -478,7 +481,8 @@ class TABLE(object):
 			ddl += f"{col['column_type_utf8'] } "
 			# collate
 			if with_collate or col['collation_id'] != self.sdi['dd_object']['collation_id']:
-				if col['character_set_name'] not in ['latin1','binary']:
+				#if col['character_set_name'] not in ['latin1','binary']: # 为啥之前根据字符集来? 偷懒?
+				if (col['type'] in (16, 22, 23, 24, 25, 26, 27, 28, 29) and col['collation_id'] != 63) or col['type_name'] in ['ENUM','SET']: # 22,23
 					ddl += f"CHARACTER SET {col['character_set_name']} COLLATE {col['collation_name']} "
 			# generated & virtual
 			if col['generation_expression'] != '':
@@ -551,11 +555,11 @@ class TABLE(object):
 				table_schema_name = f"{self._enclosed}{self.schema}{self._enclosed}.{self._enclosed}{self.name}{self._enclosed}"
 				if col['version_added'] > 0:
 					self.ddl_history_list.append([col['version_added'],f"ALTER TABLE {table_schema_name} ADD COLUMN {ddl[2:-1]};"])
-				if col['version_dropped'] > 0 and col['version_dropped'] < 66:
+				if col['version_dropped'] > 0 and col['version_dropped'] < ROW_VERSION_DROPPED_NON:
 					self.ddl_history_list.append([col['version_dropped'],f"ALTER TABLE {table_schema_name} DROP COLUMN {self._enclosed}{colname}{self._enclosed};"])
 				if col['version_added'] == 0:
 					tddl += ddl[:-1]+",\n"
-			elif col['version_dropped'] == 66:
+			elif col['version_dropped'] == ROW_VERSION_DROPPED_NON:
 				tddl += ddl[:-1]+",\n"
 		return tddl[:-2]
 
@@ -623,6 +627,13 @@ class TABLE(object):
 			if e == '(': # pk=rowid
 				continue
 			ddl += e[:-1] + ") "
+			# 索引也有key_block_size属性, 1. 主键不需要(表级) 2. 和主键不一样才显示
+			if isinstance(idx.get('options'), str):
+				idxoptions = str2dict(idx.get('options'))
+				if 'block_size' in idxoptions and int(idxoptions['block_size']) > 0 and idx_type_name != 'PRIMARY ':
+					_tbl_kbs = str2dict(self.sdi['dd_object'].get('options', '')).get('key_block_size', '')
+					if _tbl_kbs != idxoptions['block_size']:
+						ddl += f"KEY_BLOCK_SIZE={idxoptions['block_size']} "
 			if idx['comment'] != "":
 				ddl += f"COMMENT {repr(idx['comment'])} "
 			if not idx['is_visible']:
@@ -667,16 +678,23 @@ class TABLE(object):
 			ref_column_name = f"{','.join([ self._enclosed+x['referenced_column_name']+self._enclosed for x in foreign_keys['elements']])}"
 			foreign_column_name = f"{','.join([ self._enclosed+str(self.column[x['column_opx']]['name'])+self._enclosed for x in foreign_keys['elements']])}"
 			reference_option = '' # 1:None 2:RESTRICT 3:CASCADE
-			if foreign_keys['delete_rule'] == 2:
-				reference_option = ' ON DELETE RESTRICT'
-			elif foreign_keys['delete_rule'] == 3:
-				reference_option = ' ON DELETE CASCADE'
-			elif foreign_keys['update_rule'] == 2:
-				reference_option = ' ON UPDATE RESTRICT'
-			elif foreign_keys['update_rule'] == 3:
-				reference_option = ' ON UPDATE CASCADE'
-			else:
-				reference_option = ''
+			# ON DELETE 和 ON UPDATE是可以都设置的, 之前if写成了elif还一直没发现.. 
+			# 为了便于理解,我们修改下写法
+			_rule = {2:'RESTRICT', 3:'CASCADE', 4:'SET NULL', 5:'SET DEFAULT'}
+			if foreign_keys['delete_rule'] in _rule:
+				reference_option += f" ON DELETE {_rule[foreign_keys['delete_rule']]}"
+			if foreign_keys['update_rule'] in _rule:
+				reference_option += f" ON UPDATE {_rule[foreign_keys['update_rule']]}"
+			#if foreign_keys['delete_rule'] == 2:
+			#	reference_option = ' ON DELETE RESTRICT'
+			#elif foreign_keys['delete_rule'] == 3:
+			#	reference_option = ' ON DELETE CASCADE'
+			#if foreign_keys['update_rule'] == 2:
+			#	reference_option += ' ON UPDATE RESTRICT'
+			#elif foreign_keys['update_rule'] == 3:
+			#	reference_option += ' ON UPDATE CASCADE'
+			#else:
+			#	reference_option = ''
 			foreign = f"{self._start}CONSTRAINT {self._enclosed}{foreign_key_name}{self._enclosed} FOREIGN KEY ({foreign_column_name}) REFERENCES {ref_schem_table}({ref_column_name}){reference_option}"
 			foreigns.append(foreign) 
 			alter_ddl += f"ALTER TABLE {self._enclosed}{self.schema}{self._enclosed}.{self._enclosed}{self.name}{self._enclosed} ADD {foreign};\n"
@@ -689,8 +707,11 @@ class TABLE(object):
 			alter_ddl = ''
 			for chk in dd['dd_object']['check_constraints']:
 				#chkv = base64.b64decode(chk['check_clause']).decode()
+				# 8.0.16 语法多了个  [[NOT] ENFORCED]   1: ENFORCED  2: NOT ENFORCED
+				# 实际上只有 NOT ENFORCED 才会显示出现(默认ENFORCED)
 				chkv = chk['check_clause_utf8']
-				check.append(f"{self._start}CONSTRAINT {self._enclosed}{chk['name']}{self._enclosed} CHECK ({chkv})")
+				_chk_enf = ' /*!80016 NOT ENFORCED */' if chk.get('state', 2) == 1 else ''
+				check.append(f"{self._start}CONSTRAINT {self._enclosed}{chk['name']}{self._enclosed} CHECK ({chkv}){_chk_enf}")
 				alter_ddl += f"ALTER TABLE {self._enclosed}{self.schema}{self._enclosed}.{self._enclosed}{self.name}{self._enclosed} ADD {check[-1]}"
 			return ",\n".join([ x for x in check ]) if not alter else alter_ddl
 		else:
@@ -702,6 +723,8 @@ class TABLE(object):
 		options = str2dict(dd['dd_object']['options'])
 		se_private_data = str2dict(dd['dd_object']['se_private_data'])
 		row_format = f" ROW_FORMAT={ROW_FORMAT[dd['dd_object']['row_format']]}" if dd['dd_object']['row_format'] >= 3 else ''
+		# ROW_FORMAT=compressed的时显示指定KEY_BLOCK_SIZE,那么我们也跟着显示
+		key_block_size = f" KEY_BLOCK_SIZE={options['key_block_size']}" if 'key_block_size' in options and int(options['key_block_size']) > 0 else ''
 		compression = f" COMPRESSION={repr(options['compress'])}" if 'compress' in options else '' 
 		auto_inc = f" AUTO_INCREMENT={int(se_private_data['autoinc'])+1}" if 'autoinc' in se_private_data else ''
 			
@@ -714,7 +737,7 @@ class TABLE(object):
 			stats += f" STATS_AUTO_RECALC=0"
 		if 'stats_sample_pages' in options and int(options['stats_sample_pages']) > 0:
 			stats += f" STATS_SAMPLE_PAGES={options['stats_sample_pages']}"
-		ddl = f"ENGINE={dd['dd_object']['engine']}{auto_inc} DEFAULT CHARSET={self.character_set_name} COLLATE={self.collation_name}{' COMMENT '+repr(comment) if comment !='' else ''}{stats}{compression}{row_format}" # encrypt_type:PASS
+		ddl = f"ENGINE={dd['dd_object']['engine']}{auto_inc} DEFAULT CHARSET={self.character_set_name} COLLATE={self.collation_name}{' COMMENT '+repr(comment) if comment !='' else ''}{stats}{compression}{row_format}{key_block_size}" # encrypt_type:PASS
 		return ddl
 
 	def get_ddl(self,ddl_history=False,disable_key=False,disable_foreign_key=False):
@@ -825,5 +848,5 @@ class TABLE(object):
 		self.pk_null_count = 0
 		for colid in self.column:
 			col = self.column[colid]
-			if col['version_added'] == 0 and col['version_dropped'] == 66 and col['is_nullable']:
+			if col['version_added'] == 0 and col['version_dropped'] == ROW_VERSION_DROPPED_NON and col['is_nullable']:
 				self.pk_null_count += 1

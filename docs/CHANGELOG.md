@@ -1,5 +1,15 @@
 # CHANGE LOG
 
+## 2026.11.02
+1. 修复了DDL的一些BUG
+	1. ON DELETE 和 ON UPDATE是可以都设置的
+	2. 8.0.16 check支持的ENFORCED属性
+	3. 表和索引支持KEY_BLOCK_SIZE属性
+	4. DDL展示字符集规则如下:
+		1. 和表字符集不一样
+		2. 指定数据类型(16, 22, 23, 24, 25, 26, 27, 28, 29)且字符集不为binary(除非是enum/set)
+2. 修复了DML的BUG:当mysql版本大于等于9.1时,instant ddl连续次数超过64 (正经人谁跑这么多???)
+
 ## 2026.10.30
 ```txt
 1. 修复了一些frm的bug
