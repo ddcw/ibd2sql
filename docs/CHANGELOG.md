@@ -1,5 +1,21 @@
 # CHANGE LOG
 
+## 2026.11.03
+1. frm支持生成列
+	1. 位置: orig_gcol_screen_pos = disk_buff+read_length-gcol_screen_length
+	2. 每个生成列的结构:
+		byte 1   : 固定为1
+		byte 2,3 : 生成列表达式的长度
+		byte 4   : 0:virtual  1:stored
+		byte 5.. : 实际的表达式
+	3. 带有生成列之后,frm存储方式就有区别了
+		1. virtual的默认值放在最后的
+		2. 对应的default_value_null_bitmask也得重构下
+2. 生成列展示规则
+	1. insert不包含生成列(建议和--complete一起使用,不然会出现列数量不匹配)
+	2. virtual的生成列不存储
+	3. 生成列也有null属性
+
 ## 2026.11.02
 1. 修复了DDL的一些BUG
 	1. ON DELETE 和 ON UPDATE是可以都设置的

@@ -198,7 +198,7 @@ class TABLE(object):
 		self.column_order = []
 		for colid in self.column:
 			col = self.column[colid]
-			if col['hidden'] == 1:
+			if col['hidden'] == 1 and col['generation_expression'] == '': # 排除生成列...
 				self.column_order.append((col['name'],col['default']))
 		#self.column = dict([ (col['physical_pos'],col) for col in column ])
 		#column = [ [col['physical_pos'],col] for col in column ]
@@ -488,6 +488,8 @@ class TABLE(object):
 			if col['generation_expression'] != '':
 				generation_expression = auto_col_convert(col['generation_expression'],self.column,col['character_set_name']) if self.mysql_version_id <= 80028 else col['generation_expression']
 				ddl += f"GENERATED ALWAYS AS ({generation_expression}) {'VIRTUAL' if col['is_virtual'] else 'STORED'} "
+				if not col['is_nullable']:
+					ddl += "NOT NULL "
 			elif col['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','BLOB','LONG_BLOB']: #  BLOB, TEXT, GEOMETRY or JSON cant't have default
 				ddl += "" if col['is_nullable'] else "NOT NULL "
 				
@@ -810,7 +812,7 @@ class TABLE(object):
 			colid_list = []
 			for colid in self.column:
 				col = self.column[colid]
-				if (colid in self.pk and colid not in prepk) or col['name'] in ['DB_TRX_ID','DB_ROLL_PTR']:
+				if (colid in self.pk and colid not in prepk) or col['name'] in ['DB_TRX_ID','DB_ROLL_PTR'] or col['is_virtual']: # virtual是不需要存储的
 					continue
 				elif col['version_added'] <= row_version and row_version < col['version_dropped']:
 					null_count += 1 if col['is_nullable'] else 0
@@ -830,7 +832,7 @@ class TABLE(object):
 				null_count = 0
 				for colid in self.column:
 					col = self.column[colid]
-					if (colid in self.pk and colid not in prepk) or col['name'] in ['DB_TRX_ID','DB_ROLL_PTR'] or col['version_added'] > row_version:
+					if (colid in self.pk and colid not in prepk) or col['name'] in ['DB_TRX_ID','DB_ROLL_PTR'] or col['version_added'] > row_version or col['is_virtual']: # virtual是不需要存储的
 						continue
 					baserow.append(colid)
 					null_count += 1 if col['is_nullable'] else 0

@@ -130,6 +130,7 @@ class MYSQLFRM(object):
 		self._read_engine_data()
 		self._read_comment()
 		self._read_columns()
+		self._read_gcol()
 
 	def read_int(self,n):
 		return self.data.read_int(n)
@@ -386,12 +387,62 @@ class MYSQLFRM(object):
 		# HA_OPTION_PACK_RECORD = 1
 		self.null_bit_pos = 1 if self.FRM_HEADER['create_info_table_option'] & 1 == 0 else 0
 		self.default_value_null_bitmask = self.DEFAULT_VALUE.read_int((self.COLUMNS['null_fields']+7+self.null_bit_pos)//8)
+		#for i in range(self.COLUMNS['fields']):
+		#	if i < self.COLUMNS['fields'] - 1:
+		#		self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.read(self.COLUMNS['field'][i+1]['metadata']['recpos']-self.COLUMNS['field'][i]['metadata']['recpos'])
+		#	else:
+		#		self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.data[self.DEFAULT_VALUE.offset:]
+		# 需要考虑virtual是放在最后的(不一定能触法, 但我们还是修改下逻辑)
+
+		_cols = []
 		for i in range(self.COLUMNS['fields']):
-			if i < self.COLUMNS['fields'] - 1:
-				self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.read(self.COLUMNS['field'][i+1]['metadata']['recpos']-self.COLUMNS['field'][i]['metadata']['recpos'])
-			else:
-				self.COLUMNS['field'][i]['default_bin'] = self.DEFAULT_VALUE.data[self.DEFAULT_VALUE.offset:]
-			#print(self.COLUMNS['field'][i]['default_bin'])
+			_cols.append((self.COLUMNS['field'][i]['metadata']['recpos'],i))
+		_ = _cols.sort()
+		for i in range(len(_cols)):
+			stored_rec_length = (_cols[i+1][0] - _cols[i][0]) if i < (len(_cols)-1) else (self.FRM_HEADER['rec_length'] - _cols[i][0]+1)
+			_default_data = self.DEFAULT_VALUE.read(stored_rec_length)
+			self.COLUMNS['field'][_cols[i][1]]['default_bin'] = _default_data
+
+		## 重排default_value_null_bitmask
+		_mask = self.default_value_null_bitmask
+		_rec = [i for _p, i in _cols if self.COLUMNS['field'][i]['metadata']['pack_flag'] & 0x8000]
+		_log = [i for i, c in enumerate(self.COLUMNS['field']) if c['metadata']['pack_flag'] & 0x8000]
+		_new = 0
+		for n, i in enumerate(_rec):
+			if (_mask >> (self.null_bit_pos + n)) & 1:
+				_new |= 1 << (_log.index(i) + self.null_bit_pos)
+		#print(self.default_value_null_bitmask,_new)
+		self.default_value_null_bitmask = _new
+
+
+	# unireg_type & FRM_context::GENERATED_FIELD(128)
+	# where: orig_gcol_screen_pos = disk_buff+read_length-gcol_screen_length
+	# byte 1      = 1 (always 1 to allow for future extensions)
+	# byte 2,3    = expression length
+	# byte 4      = flags, as of now:
+	# 	0 - no flags
+	#	1 - field is physically stored
+	# byte 5-...  = generated column expression (text data)
+	def _read_gcol(self): # 生成列的解析
+		glen = self.COLUMNS.get('gcol_screen_length', 0)
+		if not glen:
+			return
+		self.data.seek(self.data.size - glen, 0) if hasattr(self.data, 'size') else self.data.seek(-glen, 2)
+		buf = self.data.read(glen)
+		off = 0
+		for col in self.COLUMNS['field']:
+			if not (col['metadata']['unireg_type'] & 128): # 不是生成列的就不管了
+				continue
+			if off + 4 > len(buf): # 不足4字节了, 1个都不够了
+				break
+			_flags = buf[off] # 固定为1, 我们也懒得判断了.
+			expr_len = int.from_bytes(buf[off+1:off+3], 'little') # 表达式长度
+			stored = buf[off+3] #1:stored 0:virtual
+			expr = buf[off+4:off+4+expr_len].decode('utf-8', 'replace')
+			off += 4 + expr_len # 下一个偏移量
+			col['is_virtual'] = (stored == 0) # 之前还写完整的self.COLUMN... 确实没必要
+			col['generation_expression'] = expr
+			
 
 
 	def _get_sdi_json(self):
@@ -510,11 +561,14 @@ class MYSQLFRM(object):
 					# 有现成的f,为啥之前不用呢??
 					default_value_utf8 = B2TIME(default_value, datetime_precision)[1:-1]
 				elif field_type == 21: # decimal
-					p1 = map_decimal(numeric_precision-numeric_scale)
-					_ = p1.reverse() 
-					p2 = map_decimal(numeric_scale)
-					psize = sum([x[0] for x in p1]) + sum([x[0] for x in p2])
-					default_value_utf8 = B2DECIMAL(default_value,p1,p2)
+					if not default_value: # GENERATED ALWAYS
+						default_value_utf8 = ''
+					else:
+						p1 = map_decimal(numeric_precision-numeric_scale)
+						_ = p1.reverse() 
+						p2 = map_decimal(numeric_scale)
+						psize = sum([x[0] for x in p1]) + sum([x[0] for x in p2])
+						default_value_utf8 = B2DECIMAL(default_value,p1,p2)
 				elif field_type == 22: # enum
 					#default_value_utf8 = col['elements'][BDATA2INTBD(default_value)-1]
 					default_value_utf8 = col['elements'][(int.from_bytes(default_value,'little',signed=False))-1]
@@ -550,7 +604,7 @@ class MYSQLFRM(object):
 					default_value_utf8 = '0x' + default_value.hex() if default_value else ''
 				else: # 字符型移除末尾的\x20(空格)
 					default_value_utf8 = default_value.rstrip(b'\x20').decode('utf-8','replace')
-				
+
 			#print(default_value_utf8,i,self.default_value_null_bitmask,default_value_null,self.pack_record)
 			default_value = base64.b64encode(default_value).decode()
 			column_type_utf8 = COL_TYPE[col['metadata']['field_type']][0]
@@ -611,7 +665,7 @@ class MYSQLFRM(object):
 				'is_zerofill':True if pack_flag&4 else False,
 				'is_unsigned':False if pack_flag&1 else True,
 				'is_auto_increment':True if col['metadata']['unireg_type'] == 15 else False,
-				'is_virtual':False,
+				'is_virtual':col.get('is_virtual', False),
 				'hidden':1,
 				'ordinal_position':col['ordinal_position'],
 				'char_length':char_length,
@@ -631,8 +685,8 @@ class MYSQLFRM(object):
 				'default_option':default_option,
 				'update_option':update_option,
 				'comment':col['comment'],
-				'generation_expression':'',
-				'generation_expression_utf8':'',
+				'generation_expression':col.get('generation_expression', ''),
+				'generation_expression_utf8':col.get('generation_expression', ''),
 				'options':options,
 				'se_private_data':'table_id=123456789',
 				'engine_attribute':'',
