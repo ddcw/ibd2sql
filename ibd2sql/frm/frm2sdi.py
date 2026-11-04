@@ -129,6 +129,7 @@ class MYSQLFRM(object):
 		self._read_default_value()
 		self._read_engine_data()
 		self._read_comment()
+		self._read_extra_attrs()
 		self._read_columns()
 		self._read_gcol()
 
@@ -179,8 +180,8 @@ class MYSQLFRM(object):
 		#print(json.dumps(self.FRM_HEADER))
 		if self.FRM_HEADER['frm_version'] < 9:
 			raise ValueError(f'frm_version require >= 9, current:{self.FRM_HEADER["frm_version"]}')
-		if self.FRM_HEADER['legacy_db_type'] != 12:
-			raise ValueError(f'only support innodb. current is:{elf.FRM_HEADER["legacy_db_type"]}')
+		if self.FRM_HEADER['legacy_db_type'] not in [12,20]: # 5.5 legacy_db_type:partition:20
+			raise ValueError(f'only support innodb. current is:{self.FRM_HEADER["legacy_db_type"]}')
 		record_offset = self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']
 		record_offset = ((record_offset//self.FRM_HEADER['io_size']) + 1)*self.FRM_HEADER['io_size']
 		self.record_offset = record_offset
@@ -253,14 +254,18 @@ class MYSQLFRM(object):
 
 	def _read_engine_data(self):
 		self.data.seek(self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length'],0)
-		_  = self.read_int(2)
+		connect_len = self.read_int(2)
+		_  = self.read_int(connect_len)
 		engine_len = self.read_int(2)
 		engine_name = self.read(engine_len).decode()
 		partition_len = self.read_int(4)
 		partition = self.read(partition_len).decode()
+		_ = self.read(1)
+		_ = self.read(1)
 		self.ENGINE_DATA = {
 			'engine_name':engine_name,
-			'partition':partition
+			'partition':partition,
+			'extra_offset':self.data.offset
 		}
 		#print(json.dumps(self.ENGINE_DATA))
 
@@ -269,11 +274,41 @@ class MYSQLFRM(object):
 		comment_size = self.read_int(1)
 		if comment_size < 255:
 			self.COMMENT = self.read(comment_size).decode().encode('cp1252').decode() if self.FRM_HEADER['mysql_version_id'] < 50700 else self.read(comment_size).decode()
+			self.extra_after_comment = None
 		else:
-			self.data.seek(self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']+16,0)
+			#self.data.seek(self.FRM_HEADER['io_size']+self.FRM_HEADER['tmp_key_length']+self.FRM_HEADER['rec_length']+16,0)
+			self.data.seek(self.ENGINE_DATA['extra_offset'],0)
+			for i in range(len(self.KEYS['key'])):
+				if self.KEYS['key'][i]['flags'] & 16384: # HA_USES_PARSER
+					while True:
+						ch = self.read(1)
+						if ch == b'' or ch == b'\x00':
+							break
 			comment_size = self.read_int(2)
 			self.COMMENT = self.read(comment_size).decode()
+			self.extra_after_comment = self.data.offset
 		#print('COMMENT:',self.COMMENT)
+
+	def _read_extra_attrs(self):
+		if self.FRM_HEADER['mysql_version_id'] < 50700: # 老版本不支持compression语法
+			return
+		if self.extra_after_comment is None:
+			self.data.seek(self.ENGINE_DATA['extra_offset'],0)
+			for i in range(len(self.KEYS['key'])):
+				if self.KEYS['key'][i]['flags'] & 16384: # HA_USES_PARSER
+					while True:
+						ch = self.read(1)
+						if ch == b'' or ch == b'\x00':
+							break
+		else:
+			self.data.seek(self.extra_after_comment,0)
+		fs_len = self.read_int(2)
+		if fs_len > 0:
+			self.read(fs_len - 2)
+		clen = self.read_int(2) # compression
+		self.ENGINE_DATA['compress'] = self.read(clen).decode() if clen else ''
+		elen = self.read_int(2) # encryption
+		self.ENGINE_DATA['encrypt_type'] = self.read(elen).decode() if elen else ''
 
 	def _read_columns(self):
 		# 你以为结束了么, 其实才开始呢
@@ -510,11 +545,13 @@ class MYSQLFRM(object):
 			# 默认值的判断
 			has_no_default = False
 			#null_bitmask_adds = 0 if self.pack_record == 1 else 1
-			if col['metadata']['pack_flag']&(2**14)>0 or col['metadata']['unireg_type'] == 15:
-				default_value_null = True
-			elif col['metadata']['pack_flag']&(2**15)>0:
+			# FIELDFLAG_NO_DEFAULT 16384
+			# FIELDFLAG_MAYBE_NULL 32768
+			if col['metadata']['pack_flag']&(2**15)>0: # 先看null
 				null_bitmask_adds += 1
 				default_value_null = False if self.default_value_null_bitmask&(1<<(null_bitmask_adds)) == 0 else True
+			elif col['metadata']['pack_flag']&(2**14)>0 or col['metadata']['unireg_type'] == 15:
+				default_value_null = True
 			else:
 				default_value_null = False
 			default_value = b''
@@ -533,7 +570,10 @@ class MYSQLFRM(object):
 					default_value_utf8 = struct.unpack('d',default_value)[0]
 				elif field_type == 18: # timestamp
 					#default_value_utf8 = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(BDATA2INTBD(default_value)))
-					default_value_utf8 = B2TIMESTAMP(default_value, datetime_precision)[1:-1]
+					if self.FRM_HEADER['mysql_version_id'] < 50604:
+						default_value_utf8 = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(struct.unpack('<I', default_value[:4])[0]))
+					else:
+						default_value_utf8 = B2TIMESTAMP(default_value, datetime_precision)[1:-1]
 				elif field_type == 14: # year
 					#default_value_utf8 = BDATA2INTBD(default_value)+1900
 					default_value_utf8 = B2YEAR(default_value)
@@ -547,7 +587,11 @@ class MYSQLFRM(object):
 					rdata = f"{year:04d}-{str(month).zfill(2)}-{str(day).zfill(2)}{'.'+str(jingdu) if datasize > 3 else ''}"
 					default_value_utf8 = rdata
 				elif field_type == 19: # datetime
-					default_value_utf8 = B2DATETIME(default_value, datetime_precision)[1:-1]
+					if self.FRM_HEADER['mysql_version_id'] < 50604: # 数据都支持了,frm的default却忘了
+						_dt = str(struct.unpack('<Q', default_value)[0]).zfill(14)
+						default_value_utf8 = f'{_dt[:4]}-{_dt[4:6]}-{_dt[6:8]} {_dt[8:10]}:{_dt[10:12]}:{_dt[12:14]}'
+					else:
+						default_value_utf8 = B2DATETIME(default_value, datetime_precision)[1:-1]
 				#	signed,year_month,day,hour,minute,second = INNODB_TIMESPLIT(
 				#		BDATA2INTBD(default_value[:5]),
 				#		40,
@@ -558,8 +602,17 @@ class MYSQLFRM(object):
 				#	rdata = f"{'-' if signed == 0 else ''}{year}-{str(month).zfill(2)}-{str(day).zfill(2)} {str(hour).zfill(2)}:{str(minute).zfill(2)}:{str(second).zfill(2)}{'.'+str(jingdu) if datasize > 5 else ''}"
 				#	default_value_utf8 = rdata
 				elif field_type == 20: # time
-					# 有现成的f,为啥之前不用呢??
-					default_value_utf8 = B2TIME(default_value, datetime_precision)[1:-1]
+					# 有现成的,为啥之前不用呢??
+					if self.FRM_HEADER['mysql_version_id'] < 50604:
+						_t = int.from_bytes(default_value, 'little', signed=True)
+						_sign = '-' if _t < 0 else ''
+						_t = str(abs(_t)).zfill(6)
+						if len(_t) > 6:
+							_sign += _t[:len(_t)-6]
+							_t = _t[len(_t)-6:]
+						default_value_utf8 = f'{_sign}{_t[:2]}:{_t[2:4]}:{_t[4:6]}'
+					else:
+						default_value_utf8 = B2TIME(default_value, datetime_precision)[1:-1]
 				elif field_type == 21: # decimal
 					if not default_value: # GENERATED ALWAYS
 						default_value_utf8 = ''
@@ -866,7 +919,7 @@ class MYSQLFRM(object):
 
 		dd_object = {
 			'name':self.table_name,
-			'options':f'key_block_size={self.FRM_HEADER["key_block_size"]};pack_record={self.pack_record};stats_auto_recalc=0;stats_sample_pages=0;',
+			'options':f'key_block_size={self.FRM_HEADER["key_block_size"]};pack_record={self.pack_record};stats_auto_recalc=0;stats_sample_pages=0;'+ (f'compress={self.ENGINE_DATA["compress"]};' if self.ENGINE_DATA.get('compress') else '') + (f'encrypt_type={self.ENGINE_DATA["encrypt_type"]};' if self.ENGINE_DATA.get('encrypt_type') else ''),
 			'check_constraints':[],
 			'collation_id':(self.FRM_HEADER['charset_left']<<8)+self.FRM_HEADER['default_table_charset'],
 			'columns':COLUMN,

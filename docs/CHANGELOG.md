@@ -1,5 +1,15 @@
 # CHANGE LOG
 
+
+## 2026.11.04
+1. 修复一些frm的bug:
+	1. nodefault+nullable不跳过null位
+	2. 分区表+长comment
+	3. ddl中5.6.4及其以下版本中datetime/time/timestamp默认值
+2. 新增一些frm的支持:
+	1. 5.5环境的分区表(legacy_db_type=20)
+	3. ddl支持compression属性(对解析ibd没有帮助,只对ddl完整性有帮助,但我们8.x的都展示了compression属性,那这也顺便解析下吧,即使要改一大堆代码-_-)
+
 ## 2026.11.03
 1. frm支持生成列
 	1. 位置: orig_gcol_screen_pos = disk_buff+read_length-gcol_screen_length
