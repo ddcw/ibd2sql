@@ -106,7 +106,7 @@ class INDEX(PAGE):
 			#self._read_nullbitmask_varsize_new = self._read_nullbitmask_varsize_compressed
 
 		self.off_page_flag = 16404
-		if 'POST_ANTELOPE' in kwargs and kwargs['POST_ANTELOPE'] == 0 and self.table.mysql_version_id<80000:
+		if 'POST_ANTELOPE' in kwargs and kwargs['POST_ANTELOPE'] == 0: # and self.table.mysql_version_id<80000:
 			self._read_extra_column = self._read_extra_column_with_768
 			self.off_page_flag = 17172
 
@@ -315,7 +315,7 @@ class INDEX(PAGE):
 			vsize = (nmask-1)&size_null
 			t = vsize
 			vsize -= lastoffset
-			lastoffset = t
+			lastoffset = t if vsize < 17172 else lastoffset + 788 # 记录上一个offset的时候不需要考虑溢出部分
 			if self.table.column[colid]['name'] in ['DB_TRX_ID','DB_ROLL_PTR']:
 				continue
 			size_list.append(vsize)
@@ -431,6 +431,7 @@ class INDEX(PAGE):
 			data = None
 			if null:
 				data = 'null'
+				_ = self.read(vsize) # redundant的null也是可能会占用空间的
 			elif vsize == self.off_page_flag:
 				self.zblob_offset += 20 if self.is_compress_page else 0
 				if self.disable_extra_pages:
