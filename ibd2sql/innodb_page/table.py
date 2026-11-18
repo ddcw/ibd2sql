@@ -439,7 +439,7 @@ class TABLE(object):
 		else:
 			return {}
 
-		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB','JSON']:
+		if data['type_name'] in ['TINY_BLOB','MEDIUM_BLOB','LONG_BLOB','BLOB','JSON','GEOMETRY']:
 			data['is_big'] = True
 
 		# old datetime

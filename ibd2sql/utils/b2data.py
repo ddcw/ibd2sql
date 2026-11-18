@@ -362,7 +362,7 @@ def B2GEOMETRY(data,srsid):
 
 # VECTOR
 def B2VECTOR(data):
-	return data.hex()
+	return f"0x{data.hex()}"
 
 from .mysql_json import RawNumber
 def _json_dump(obj):
