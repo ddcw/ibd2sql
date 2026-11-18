@@ -1,5 +1,7 @@
 # CHANGE LOG
 
+## 2026.11.18
+1. 修复BUG: 5.x也有row_format=compressed的溢出页(zblob)
 
 ## 2026.11.04
 1. 修复一些frm的bug:
