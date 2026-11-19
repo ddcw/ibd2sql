@@ -139,13 +139,14 @@ class TABLE(object):
 		}, ....
 	}
 	"""
-	def __init__(self,sdi,schema=None,name=None):
+	def __init__(self,sdi,schema=None,name=None,complete=False):
 		self._enclosed = '`' # column&index optionally enclosed
 		self._start = '  ' # column&index pre char
 		self._pre = "CREATE TABLE IF NOT EXISTS "
 		self.disable_foreign_key = False 
 		#self.sdi = json.loads(sdi)[0]
 		self.sdi = sdi
+		self.complete = complete
 		self.ddl_history_list = []
 		self.schema = schema if schema is not None else self.sdi['dd_object']['schema_ref']
 		self.name = name if name is not None else self.sdi['dd_object']['name']
@@ -198,7 +199,7 @@ class TABLE(object):
 		self.column_order = []
 		for colid in self.column:
 			col = self.column[colid]
-			if col['hidden'] == 1 and col['generation_expression'] == '': # 排除生成列...
+			if col['hidden'] in ((1,4) if self.complete else (1,)) and col['generation_expression'] == '': # 排除生成列... 当使用--complete的时候会显示invisible的列
 				self.column_order.append((col['name'],col['default']))
 		#self.column = dict([ (col['physical_pos'],col) for col in column ])
 		#column = [ [col['physical_pos'],col] for col in column ]

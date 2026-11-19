@@ -90,7 +90,7 @@ def _argparse():
 		action="store_true", 
 		dest="COMPLETE_INSERT", 
 		default=False, 
-		help="sql with column name"
+		help="sql with column name(including invisible columns)"
 	)
 	parser.add_argument(
 		"--multi-value", 
@@ -249,7 +249,7 @@ def _argparse():
 	parser.add_argument(dest='FILENAME', help='ibd filename or dirname with ibd file', nargs='*')
 
 	if parser.parse_args().VERSION:
-		print('ibd2sql v2.5-20261102-pre')
+		print('ibd2sql v2.5-20261120-pre')
 		sys.exit(0)
 
 	if parser.parse_args().HELP or (parser.parse_args().FILENAME == [] and not parser.parse_args().SCAN_DROP_TABLE is not None):
@@ -499,7 +499,7 @@ if __name__ == '__main__':
 		if not parser.SQL and not parser.DDL:
 			parser.DDL = True
 		for x in file_list:
-			table = TABLE(x['sdi'])
+			table = TABLE(x['sdi'],complete=parser.COMPLETE_INSERT)
 			if parser.SCHEMA_NAME is not None:
 				table.schema = parser.SCHEMA_NAME
 			if parser.TABLE_NAME is not None:

@@ -5,6 +5,7 @@
 2. 修复BUG: redundant的null也是可能会占用空间的
 3. 支持非5.x的redundant格式(放开限制)
 4. 优化keyring加密表的解析速度, 提升10-1000倍(优先使用cryptography)
+5. 修改默认行为:当使用--complete的时候现在会显示invisible字段的值(之前固定不显示invisible字段值)
 
 ## 2026.11.18
 1. 修复BUG: 5.x也有row_format=compressed的溢出页(zblob)
