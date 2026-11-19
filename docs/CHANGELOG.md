@@ -4,6 +4,7 @@
 1. 修复BUG: row_format=redundant溢出页后面还有字段时,构建size_list是不需要考虑溢出页部分的
 2. 修复BUG: redundant的null也是可能会占用空间的
 3. 支持非5.x的redundant格式(放开限制)
+4. 优化keyring加密表的解析速度, 提升10-1000倍(优先使用cryptography)
 
 ## 2026.11.18
 1. 修复BUG: 5.x也有row_format=compressed的溢出页(zblob)

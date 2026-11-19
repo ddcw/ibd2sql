@@ -71,16 +71,24 @@ def InvShiftRows(s):
 	s[3][0], s[3][1], s[3][2], s[3][3] = s[3][1], s[3][2], s[3][3], s[3][0]
 	return s
 
+MUL9  = [GMul(x, 9)  for x in range(256)]
+MUL11 = [GMul(x, 11) for x in range(256)]
+MUL13 = [GMul(x, 13) for x in range(256)]
+MUL14 = [GMul(x, 14) for x in range(256)]
 def InvMixColumns(s):
 	for i in range(4):
 		a = s[0][i]
 		b = s[1][i]
 		c = s[2][i]
 		d = s[3][i]
-		s[0][i] = GMul(a,14) ^ GMul(b,11) ^ GMul(c,13) ^ GMul(d,9)	
-		s[1][i] = GMul(a,9) ^ GMul(b,14) ^ GMul(c,11) ^ GMul(d,13)
-		s[2][i] = GMul(a,13) ^ GMul(b,9) ^ GMul(c,14) ^ GMul(d,11)
-		s[3][i] = GMul(a,11) ^ GMul(b,13) ^ GMul(c,9) ^ GMul(d,14)
+		#s[0][i] = GMul(a,14) ^ GMul(b,11) ^ GMul(c,13) ^ GMul(d,9)	
+		#s[1][i] = GMul(a,9) ^ GMul(b,14) ^ GMul(c,11) ^ GMul(d,13)
+		#s[2][i] = GMul(a,13) ^ GMul(b,9) ^ GMul(c,14) ^ GMul(d,11)
+		#s[3][i] = GMul(a,11) ^ GMul(b,13) ^ GMul(c,9) ^ GMul(d,14)
+		s[0][i] = MUL14[a] ^ MUL11[b] ^ MUL13[c] ^ MUL9[d]
+		s[1][i] = MUL9[a]  ^ MUL14[b] ^ MUL11[c] ^ MUL13[d]
+		s[2][i] = MUL13[a] ^ MUL9[b]  ^ MUL14[c] ^ MUL11[d]
+		s[3][i] = MUL11[a] ^ MUL13[b] ^ MUL9[c]  ^ MUL14[d]
 	return s
 
 # AES解密
@@ -147,3 +155,18 @@ def aes_cbc256_decrypt(key,data,iv):
 		pre_block = block
 		rdata += plaintext_block
 	return rdata
+
+# python3.10
+# 默认速度(优化前): rows:10,000 size:40MB pages:1890 cost:45m45.590s
+# 默认速度(优化后): rows:10,000 size:40MB pages:1890 cost:4m11.961s
+# 使用cryptography库: rows:10,000 size:40MB pages:1890 cost:0m2.248s
+try:
+	from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+	def aes_cbc256_decrypt(key, data, iv):
+		c = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+		return c.update(data) + c.finalize()
+	def aes_ecb256_decrypt(key, data):
+		c = Cipher(algorithms.AES(key), modes.ECB()).decryptor()
+		return c.update(data) + c.finalize()
+except:
+	pass
